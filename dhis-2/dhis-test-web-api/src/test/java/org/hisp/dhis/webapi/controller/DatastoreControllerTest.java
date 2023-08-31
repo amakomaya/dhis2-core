@@ -542,6 +542,7 @@ class DatastoreControllerTest extends DhisControllerConvenienceTest {
 
     // switch to user with no keyspace permission and try to update key
     switchToNewUser("someoneWithNoAccess", "cats-admin");
+    switchToNewUser("someoneWithNoAccess", "cats-admin");
     assertEquals(
         "Namespace 'pets' is protected, access denied",
         PUT("/dataStore/pets/emu", "{\"name\":\"james\"}")
