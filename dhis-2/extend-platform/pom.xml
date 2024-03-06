@@ -8,7 +8,6 @@
     <version>2.41-SNAPSHOT</version>
   </parent>
   <packaging>jar</packaging>
-  <groupId>org.hisp.dhis</groupId>
   <artifactId>extend-platform</artifactId>
   <name>extend-platform</name>
   <url>http://maven.apache.org</url>
@@ -28,6 +27,5 @@
       <artifactId>spring-web</artifactId>
       <version>${spring.version}</version>
     </dependency>
-
   </dependencies>
 </project>
