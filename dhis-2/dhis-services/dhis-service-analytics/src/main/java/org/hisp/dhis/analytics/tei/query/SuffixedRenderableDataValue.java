@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2023, University of Oslo
+ * Copyright (c) 2004-2024, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,27 +25,24 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.controller.icon;
+package org.hisp.dhis.analytics.tei.query;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.HashSet;
-import java.util.Set;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
+import org.hisp.dhis.analytics.common.ValueTypeMapping;
 
-@Builder
 @Getter
-@AllArgsConstructor
-@NoArgsConstructor
-class CustomIconRequest {
+public class SuffixedRenderableDataValue extends RenderableDataValue {
 
-  @JsonProperty private String key;
+  private final String valueSuffix;
 
-  @JsonProperty private String description;
+  private SuffixedRenderableDataValue(
+      String alias, String dataValue, ValueTypeMapping valueTypeMapping, String valueSuffix) {
+    super(alias, dataValue, valueTypeMapping);
+    this.valueSuffix = valueSuffix;
+  }
 
-  @JsonProperty private Set<String> keywords = new HashSet<>();
-
-  @JsonProperty private String fileResourceId;
+  public static RenderableDataValue of(
+      String alias, String dataValue, ValueTypeMapping valueTypeMapping, String suffix) {
+    return new SuffixedRenderableDataValue(alias, dataValue, valueTypeMapping, suffix);
+  }
 }

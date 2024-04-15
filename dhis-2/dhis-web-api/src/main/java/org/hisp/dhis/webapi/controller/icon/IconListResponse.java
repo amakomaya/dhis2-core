@@ -25,61 +25,21 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.icon;
+package org.hisp.dhis.webapi.controller.icon;
 
-import java.util.Date;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.hisp.dhis.common.Pager;
-import org.hisp.dhis.webapi.controller.event.webrequest.OrderCriteria;
 
 /**
  * @author Zubair Asghar
  */
-@Data
-@NoArgsConstructor
-public class IconQueryParams {
-
-  private List<String> keys;
-  private List<String> keywords;
-  private List<OrderCriteria> order;
-  private Date createdStartDate;
-  private Date createdEndDate;
-  private Date lastUpdatedStartDate;
-  private Date lastUpdatedEndDate;
-  private IconTypeFilter type = IconTypeFilter.ALL;
-  private String search;
-  private boolean paging = true;
-  private int pageSize = Pager.DEFAULT_PAGE_SIZE;
-  private int page = 1;
-
-  public boolean hasCreatedStartDate() {
-    return createdStartDate != null;
-  }
-
-  public boolean hasCreatedEndDate() {
-    return createdEndDate != null;
-  }
-
-  public boolean hasLastUpdatedStartDate() {
-    return lastUpdatedStartDate != null;
-  }
-
-  public boolean hasLastUpdatedEndDate() {
-    return lastUpdatedEndDate != null;
-  }
-
-  public boolean hasKeywords() {
-    return keywords != null && !keywords.isEmpty();
-  }
-
-  public boolean hasKeys() {
-    return keys != null && !keys.isEmpty();
-  }
-
-  public boolean hasSearch() {
-    return StringUtils.isNotEmpty(search);
-  }
+@Getter
+@AllArgsConstructor
+public class IconListResponse {
+  @JsonProperty private final Pager pager;
+  @JsonProperty private final List<ObjectNode> icons;
 }

@@ -25,21 +25,53 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.controller.icon;
+package org.hisp.dhis.webapi.controller;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.hisp.dhis.common.Pager;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.hisp.dhis.jsontree.JsonArray;
+import org.hisp.dhis.jsontree.JsonMap;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.webapi.DhisControllerIntegrationTest;
+import org.junit.jupiter.api.Test;
 
 /**
- * @author Zubair Asghar
+ * Tests the {@link org.hisp.dhis.webapi.controller.scheduling.SchedulingController}.
+ *
+ * @author Jan Bernitt
  */
-@Getter
-@AllArgsConstructor
-public class PaginatedIconResponse {
-  @JsonProperty private final Pager pager;
-  @JsonProperty private final List<ObjectNode> icons;
+class JobSchedulingControllerTest extends DhisControllerIntegrationTest {
+
+  @Test
+  void testGetRunningProgressTypesOnly() {
+    JsonArray types = GET("/scheduling/running/types").content();
+    assertEquals(0, types.size());
+  }
+
+  @Test
+  void testGetRunningProgressTypes() {
+    JsonMap<JsonArray> types = GET("/scheduling/running").content().asMap(JsonArray.class);
+    assertEquals(0, types.size());
+  }
+
+  @Test
+  void testGetCompletedProgressTypes() {
+    JsonMap<JsonArray> types = GET("/scheduling/completed").content().asMap(JsonArray.class);
+    assertEquals(0, types.size());
+  }
+
+  @Test
+  void testGetRunningProgress() {
+    JsonObject progress = GET("/scheduling/running/DATA_INTEGRITY").content();
+    assertTrue(progress.isObject());
+    assertTrue(progress.isEmpty());
+  }
+
+  @Test
+  void testGetCompletedProgress() {
+    JsonObject progress = GET("/scheduling/completed/DATA_INTEGRITY").content();
+    assertTrue(progress.isObject());
+    assertTrue(progress.isEmpty());
+  }
 }

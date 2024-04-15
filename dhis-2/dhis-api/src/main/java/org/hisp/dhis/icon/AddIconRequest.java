@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2024, University of Oslo
+ * Copyright (c) 2004-2023, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,59 +27,27 @@
  */
 package org.hisp.dhis.icon;
 
-import java.util.Date;
-import java.util.List;
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.HashSet;
+import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
-import org.hisp.dhis.common.Pager;
-import org.hisp.dhis.webapi.controller.event.webrequest.OrderCriteria;
 
-/**
- * @author Zubair Asghar
- */
-@Data
+/** User input when creating a new {@link Icon} */
+@Builder(toBuilder = true)
+@Getter
+@AllArgsConstructor
 @NoArgsConstructor
-public class IconQueryParams {
+public class AddIconRequest {
 
-  private List<String> keys;
-  private List<String> keywords;
-  private List<OrderCriteria> order;
-  private Date createdStartDate;
-  private Date createdEndDate;
-  private Date lastUpdatedStartDate;
-  private Date lastUpdatedEndDate;
-  private IconTypeFilter type = IconTypeFilter.ALL;
-  private String search;
-  private boolean paging = true;
-  private int pageSize = Pager.DEFAULT_PAGE_SIZE;
-  private int page = 1;
+  @JsonProperty(required = true)
+  private String key;
 
-  public boolean hasCreatedStartDate() {
-    return createdStartDate != null;
-  }
+  @JsonProperty private String description;
+  @JsonProperty private Set<String> keywords = new HashSet<>();
 
-  public boolean hasCreatedEndDate() {
-    return createdEndDate != null;
-  }
-
-  public boolean hasLastUpdatedStartDate() {
-    return lastUpdatedStartDate != null;
-  }
-
-  public boolean hasLastUpdatedEndDate() {
-    return lastUpdatedEndDate != null;
-  }
-
-  public boolean hasKeywords() {
-    return keywords != null && !keywords.isEmpty();
-  }
-
-  public boolean hasKeys() {
-    return keys != null && !keys.isEmpty();
-  }
-
-  public boolean hasSearch() {
-    return StringUtils.isNotEmpty(search);
-  }
+  @JsonProperty(required = true)
+  private String fileResourceId;
 }
