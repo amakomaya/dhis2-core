@@ -34,6 +34,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Collectors.toUnmodifiableSet;
+import static org.hisp.dhis.webapi.openapi.ApiDescriptions.toMarkdown;
 import static org.hisp.dhis.webapi.openapi.DirectType.isDirectType;
 import static org.hisp.dhis.webapi.openapi.OpenApiAnnotations.getAnnotated;
 import static org.hisp.dhis.webapi.openapi.OpenApiAnnotations.getAnnotations;
@@ -314,9 +315,9 @@ final class ApiExtractor {
     // error response(s) from annotated exception types in method signature and
     // error response(s) from annotations on exceptions in method signature
     for (AnnotatedType error : source.getAnnotatedExceptionTypes()) {
-      OpenApi.Response response =
-          error.getType() instanceof Class<?> t ? t.getAnnotation(OpenApi.Response.class) : null;
-      if (response == null) response = error.getAnnotation(OpenApi.Response.class);
+      OpenApi.Response response = error.getAnnotation(OpenApi.Response.class);
+      if (response == null && error.getType() instanceof Class<?> t)
+        response = t.getAnnotation(OpenApi.Response.class);
       if (response != null) {
         res.putAll(newErrorResponse(endpoint, error, response, produces));
       }
@@ -354,13 +355,35 @@ final class ApiExtractor {
       Set<MediaType> produces) {
     Map<HttpStatus, Api.Response> responses =
         extractResponses(endpoint, response, produces, List.of(), null);
-    if (responses.size() == 1)
-      responses.values().iterator().next().getDescription().setIfAbsent(extractDescription(source));
+    if (responses.size() == 1) {
+      Api.Response error = responses.values().iterator().next();
+      Type exType = source.getType();
+      error
+          .getDescription()
+          .setIfAbsent(extractDescription(source, exType instanceof Class<?> ex ? ex : null));
+    }
     return responses;
   }
 
   private static String extractDescription(AnnotatedElement source) {
-    return ApiDescriptions.toMarkdown(source.getAnnotation(OpenApi.Description.class));
+    return extractDescription(source, null);
+  }
+
+  private static String extractDescription(
+      @Nonnull AnnotatedElement source, @CheckForNull Class<?> type) {
+    OpenApi.Description desc0 = source.getAnnotation(OpenApi.Description.class);
+    OpenApi.Description desc1 = type == null ? null : type.getAnnotation(OpenApi.Description.class);
+    if (desc0 == null && desc1 == null) return null;
+    String text0 = desc0 == null ? "" : toMarkdown(desc0);
+    String text1 = desc1 == null ? "" : toMarkdown(desc1);
+    if (desc0 == null)
+      return (desc1.ignoreFileDescription() || text1.contains("{md}") ? "" : "{md}\n") + text1;
+    boolean noPlaceholder =
+        desc0.ignoreFileDescription() || text0.contains("{md}") || text1.contains("{md}");
+    String placeholder = noPlaceholder ? "" : "\n{md}\n";
+    return (desc1 == null || desc0.ignoreTypeDescription())
+        ? text0 + placeholder
+        : text0 + placeholder + text1;
   }
 
   private static Map<HttpStatus, Api.Response> extractResponses(
@@ -420,7 +443,7 @@ final class ApiExtractor {
         } else {
           Api.RequestBody requestBody =
               endpoint.getRequestBody().init(() -> new Api.RequestBody(p, details.required()));
-          requestBody.getDescription().setIfAbsent(extractDescription(p));
+          requestBody.getDescription().setIfAbsent(extractDescription(p, p.getType()));
           consumes.forEach(mediaType -> requestBody.getConsumes().putIfAbsent(mediaType, type));
         }
       } else if (p.isAnnotationPresent(PathVariable.class)) {
@@ -437,7 +460,7 @@ final class ApiExtractor {
         RequestBody a = p.getAnnotation(RequestBody.class);
         Api.RequestBody requestBody =
             endpoint.getRequestBody().init(() -> new Api.RequestBody(p, a.required()));
-        requestBody.getDescription().setIfAbsent(extractDescription(p));
+        requestBody.getDescription().setIfAbsent(extractDescription(p, p.getType()));
         Api.Schema type = extractParamSchema(endpoint, p.getParameterizedType());
         consumes.forEach(mediaType -> requestBody.getConsumes().putIfAbsent(mediaType, type));
       } else if (isParams(p)) {
@@ -453,7 +476,7 @@ final class ApiExtractor {
     Api.Parameter parameter =
         new Api.Parameter(source, key, details.in(), details.required(), type, deprecated);
     parameter.getDefaultValue().setValue(details.defaultValue());
-    parameter.getDescription().setIfAbsent(extractDescription(source));
+    parameter.getDescription().setIfAbsent(extractDescription(source, source.getType()));
     return parameter;
   }
 
@@ -464,7 +487,7 @@ final class ApiExtractor {
     boolean deprecated = source.isAnnotationPresent(Deprecated.class);
     Api.Parameter res =
         new Api.Parameter(source, name, In.PATH, details.required(), type, deprecated);
-    res.getDescription().setIfAbsent(extractDescription(source));
+    res.getDescription().setIfAbsent(extractDescription(source, source.getType()));
     return res;
   }
 
@@ -476,7 +499,7 @@ final class ApiExtractor {
     Api.Parameter res =
         new Api.Parameter(source, name, In.QUERY, details.required(), type, deprecated);
     res.getDefaultValue().setValue(details.defaultValue());
-    res.getDescription().setIfAbsent(extractDescription(source));
+    res.getDescription().setIfAbsent(extractDescription(source, source.getType()));
     return res;
   }
 
@@ -555,7 +578,9 @@ final class ApiExtractor {
         new Api.Parameter(source, property.getName(), In.QUERY, false, schema, deprecated);
     Object defaultValue = property.getDefaultValue();
     if (defaultValue != null) param.getDefaultValue().setValue(defaultValue.toString());
-    param.getDescription().setValue(extractDescription(source));
+    param
+        .getDescription()
+        .setValue(extractDescription(source, type instanceof Class<?> c ? c : null));
     return param;
   }
 

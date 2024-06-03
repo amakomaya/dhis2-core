@@ -41,9 +41,9 @@ import org.hisp.dhis.event.EventStatus;
 import org.hisp.dhis.fieldfiltering.FieldFilterParser;
 import org.hisp.dhis.fieldfiltering.FieldPath;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
+import org.hisp.dhis.program.EnrollmentStatus;
 import org.hisp.dhis.program.Program;
 import org.hisp.dhis.program.ProgramStage;
-import org.hisp.dhis.program.ProgramStatus;
 import org.hisp.dhis.trackedentity.TrackedEntity;
 import org.hisp.dhis.trackedentity.TrackedEntityType;
 import org.hisp.dhis.user.User;
@@ -123,17 +123,17 @@ public class TrackedEntityRequestParams implements PageRequestParams {
 
   private OrganisationUnitSelectionMode orgUnitMode;
 
-  /** a Program UID for which instances in the response must be enrolled in. */
+  /** The program tracked entities are enrolled in. */
   @OpenApi.Property({UID.class, Program.class})
   private UID program;
 
-  /** The {@see ProgramStatus} of the Tracked Entity Instance in the given program. */
-  private ProgramStatus programStatus;
-
   /**
-   * Indicates whether the Tracked Entity Instance is marked for follow up for the specified
-   * Program.
+   * @deprecated use {@link #enrollmentStatus} instead
    */
+  @Deprecated(since = "2.42")
+  private EnrollmentStatus programStatus;
+
+  /** Indicates whether the tracked entity is marked for follow up for the specified program. */
   private Boolean followUp;
 
   /** Start date for last updated. */
@@ -144,6 +144,8 @@ public class TrackedEntityRequestParams implements PageRequestParams {
 
   /** The last updated duration filter. */
   private String updatedWithin;
+
+  private EnrollmentStatus enrollmentStatus;
 
   /** The given Program start date. */
   private StartDateTime enrollmentEnrolledAfter;
@@ -157,12 +159,12 @@ public class TrackedEntityRequestParams implements PageRequestParams {
   /** End date for incident in the given program. */
   private EndDateTime enrollmentOccurredBefore;
 
-  /** Only returns Tracked Entity Instances of this type. */
+  /** Only returns tracked entities of this type. */
   @OpenApi.Property({UID.class, TrackedEntityType.class})
   private UID trackedEntityType;
 
   /**
-   * Semicolon-delimited list of Tracked Entity Instance UIDs
+   * Semicolon-delimited list of tracked entity UIDs
    *
    * @deprecated use {@link #trackedEntities} instead which is comma instead of semicolon separated.
    */
