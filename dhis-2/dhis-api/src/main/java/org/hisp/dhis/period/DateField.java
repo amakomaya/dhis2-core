@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2022, University of Oslo
+ * Copyright (c) 2004-2024, University of Oslo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,54 +25,34 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.tracker.imports.job;
+package org.hisp.dhis.period;
 
-import java.io.IOException;
-import javax.jms.JMSException;
-import javax.jms.TextMessage;
-import org.hisp.dhis.artemis.MessageManager;
-import org.hisp.dhis.common.AsyncTaskExecutor;
-import org.hisp.dhis.common.CodeGenerator;
-import org.hisp.dhis.render.RenderService;
-import org.springframework.stereotype.Component;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
 
-/**
- * @author Zubair Asghar
- */
-@Component
-public abstract class BaseMessageManager {
-  private final MessageManager messageManager;
+import java.util.Date;
+import java.util.Objects;
+import java.util.function.Supplier;
 
-  private final AsyncTaskExecutor taskExecutor;
+public record DateField(Date date, String dateField) {
 
-  private final RenderService renderService;
-
-  public BaseMessageManager(
-      MessageManager messageManager, AsyncTaskExecutor taskExecutor, RenderService renderService) {
-    this.messageManager = messageManager;
-    this.taskExecutor = taskExecutor;
-    this.renderService = renderService;
+  public static DateField withDefaultsIfNecessary(DateField dateField) {
+    if (Objects.isNull(dateField)) {
+      return new DateField(new Date(), "");
+    }
+    return new DateField(
+        defaultIfNull(dateField.date(), Date::new),
+        defaultIfNull(dateField.dateField(), () -> EMPTY));
   }
 
-  public String addJob(TrackerSideEffectDataBundle sideEffectDataBundle) {
-    String jobId = CodeGenerator.generateUid();
-    sideEffectDataBundle.setJobId(jobId);
-
-    messageManager.sendQueue(getTopic(), sideEffectDataBundle);
-
-    return jobId;
+  private static <T> T defaultIfNull(T item, Supplier<T> itemSupplier) {
+    return Objects.isNull(item) ? itemSupplier.get() : item;
   }
 
-  public void executeJob(Runnable runnable) {
-    taskExecutor.executeTask(runnable);
+  public static DateField withDefaults() {
+    return new DateField(new Date(), EMPTY);
   }
 
-  public TrackerSideEffectDataBundle toBundle(TextMessage message)
-      throws JMSException, IOException {
-    String payload = message.getText();
-
-    return renderService.fromJson(payload, TrackerSideEffectDataBundle.class);
+  public DateField withDate(Date date) {
+    return new DateField(date, dateField);
   }
-
-  public abstract String getTopic();
 }
