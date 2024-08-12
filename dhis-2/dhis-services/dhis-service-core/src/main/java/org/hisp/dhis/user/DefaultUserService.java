@@ -74,8 +74,8 @@ import org.hisp.dhis.commons.filter.FilterUtils;
 import org.hisp.dhis.dataset.DataSet;
 import org.hisp.dhis.feedback.ErrorCode;
 import org.hisp.dhis.feedback.ErrorReport;
+import org.hisp.dhis.feedback.ForbiddenException;
 import org.hisp.dhis.feedback.NotFoundException;
-import org.hisp.dhis.hibernate.exception.UpdateAccessDeniedException;
 import org.hisp.dhis.i18n.I18n;
 import org.hisp.dhis.i18n.I18nManager;
 import org.hisp.dhis.i18n.locale.LocaleManager;
@@ -128,6 +128,7 @@ public class DefaultUserService implements UserService {
   private final Cache<String> userDisplayNameCache;
   private final Cache<Integer> userFailedLoginAttemptCache;
   private final Cache<Integer> userAccountRecoverAttemptCache;
+  private final Cache<Integer> twoFaDisableFailedAttemptCache;
 
   public DefaultUserService(
       UserSettingService userSettingService,
@@ -177,6 +178,7 @@ public class DefaultUserService implements UserService {
     this.jsonMapper = jsonMapper;
     this.userFailedLoginAttemptCache = cacheProvider.createUserFailedLoginAttemptCache(0);
     this.userAccountRecoverAttemptCache = cacheProvider.createUserAccountRecoverAttemptCache(0);
+    this.twoFaDisableFailedAttemptCache = cacheProvider.createDisable2FAFailedAttemptCache(0);
   }
 
   @Override
@@ -581,7 +583,8 @@ public class DefaultUserService implements UserService {
     // Encode and set password
     Matcher matcher = UserService.BCRYPT_PATTERN.matcher(rawPassword);
     if (matcher.matches()) {
-      throw new IllegalArgumentException("Raw password look like BCrypt: " + rawPassword);
+      throw new IllegalArgumentException(
+          "Raw password look like BCrypt encoded password, this is most certainly a bug");
     }
 
     String encode = passwordManager.encode(rawPassword);
@@ -803,6 +806,23 @@ public class DefaultUserService implements UserService {
     approveTwoFactorSecret(user, CurrentUserUtil.getCurrentUserDetails());
   }
 
+  @Override
+  public void registerFailed2FADisableAttempt(String username) {
+    Integer attempts = twoFaDisableFailedAttemptCache.get(username).orElse(0);
+    attempts++;
+    twoFaDisableFailedAttemptCache.put(username, attempts);
+  }
+
+  @Override
+  public void registerSuccess2FADisable(String username) {
+    twoFaDisableFailedAttemptCache.invalidate(username);
+  }
+
+  @Override
+  public boolean twoFaDisableIsLocked(String username) {
+    return twoFaDisableFailedAttemptCache.get(username).orElse(0) >= LOGIN_MAX_FAILED_ATTEMPTS;
+  }
+
   @Transactional
   @Override
   public void disableTwoFa(User user, String code) {
@@ -810,17 +830,23 @@ public class DefaultUserService implements UserService {
       throw new IllegalStateException("Two factor is not enabled, enable first");
     }
 
+    if (twoFaDisableIsLocked(user.getUsername())) {
+      throw new IllegalStateException("Too many failed attempts, try again later");
+    }
+
     if (!TwoFactoryAuthenticationUtils.verify(code, user.getSecret())) {
+      registerFailed2FADisableAttempt(user.getUsername());
       throw new IllegalStateException("Invalid code");
     }
 
     resetTwoFactor(user, CurrentUserUtil.getCurrentUserDetails());
+    registerSuccess2FADisable(user.getUsername());
   }
 
   @Override
   @Transactional
   public void privilegedTwoFactorDisable(
-      User currentUser, String userUid, Consumer<ErrorReport> errors) {
+      User currentUser, String userUid, Consumer<ErrorReport> errors) throws ForbiddenException {
     User user = getUser(userUid);
     if (user == null) {
       throw new IllegalArgumentException("User not found");
@@ -828,7 +854,7 @@ public class DefaultUserService implements UserService {
 
     if (currentUser.getUid().equals(user.getUid())
         || !canCurrentUserCanModify(currentUser, user, errors)) {
-      throw new UpdateAccessDeniedException(ErrorCode.E3021.getMessage());
+      throw new ForbiddenException(ErrorCode.E3021.getMessage());
     }
 
     resetTwoFactor(user, UserDetails.fromUser(currentUser));
@@ -982,31 +1008,31 @@ public class DefaultUserService implements UserService {
 
   @Override
   @Transactional
-  public void validateTwoFactorUpdate(boolean before, boolean after, User userToModify) {
+  public void validateTwoFactorUpdate(boolean before, boolean after, User userToModify)
+      throws ForbiddenException {
     if (before == after) {
       return;
     }
 
     if (!before) {
-      throw new UpdateAccessDeniedException(
-          "You can not enable 2FA with this API endpoint, only disable.");
+      throw new ForbiddenException("You can not enable 2FA with this API endpoint, only disable.");
     }
 
     UserDetails currentUserDetails = CurrentUserUtil.getCurrentUserDetails();
 
     if (currentUserDetails == null) {
-      throw new UpdateAccessDeniedException("No current user in session, can not update user.");
+      throw new ForbiddenException("No current user in session, can not update user.");
     }
 
     // Current user can not update their own 2FA settings, must use
     // /2fa/enable or disable API, even if they are admin.
     if (currentUserDetails.getUid().equals(userToModify.getUid())) {
-      throw new UpdateAccessDeniedException(ErrorCode.E3030.getMessage());
+      throw new ForbiddenException(ErrorCode.E3030.getMessage());
     }
 
     // If current user has access to manage this user, they can disable 2FA.
     if (!aclService.canUpdate(currentUserDetails, userToModify)) {
-      throw new UpdateAccessDeniedException(
+      throw new ForbiddenException(
           String.format(
               "User `%s` is not allowed to update object `%s`.",
               currentUserDetails.getUsername(), userToModify));
@@ -1016,8 +1042,7 @@ public class DefaultUserService implements UserService {
 
     if (!canAddOrUpdateUser(getUids(userToModify.getGroups()), currentUser)
         || !currentUserDetails.canModifyUser(userToModify)) {
-      throw new UpdateAccessDeniedException(
-          "You don't have the proper permissions to update this user.");
+      throw new ForbiddenException("You don't have the proper permissions to update this user.");
     }
   }
 

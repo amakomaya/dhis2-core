@@ -39,26 +39,31 @@ import java.util.Set;
 import org.hisp.dhis.common.CodeGenerator;
 import org.hisp.dhis.common.DeliveryChannel;
 import org.hisp.dhis.common.IdentifiableObjectManager;
+import org.hisp.dhis.common.UID;
+import org.hisp.dhis.feedback.NotFoundException;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.organisationunit.OrganisationUnitService;
 import org.hisp.dhis.program.message.ProgramMessage;
-import org.hisp.dhis.program.message.ProgramMessageQueryParams;
+import org.hisp.dhis.program.message.ProgramMessageOperationParams;
 import org.hisp.dhis.program.message.ProgramMessageRecipients;
 import org.hisp.dhis.program.message.ProgramMessageService;
 import org.hisp.dhis.program.message.ProgramMessageStatus;
 import org.hisp.dhis.sms.config.BulkSmsGatewayConfig;
 import org.hisp.dhis.sms.config.SmsConfiguration;
 import org.hisp.dhis.sms.config.SmsConfigurationManager;
-import org.hisp.dhis.test.integration.TransactionalIntegrationTest;
+import org.hisp.dhis.test.integration.PostgresIntegrationTestBase;
 import org.hisp.dhis.trackedentity.TrackedEntity;
 import org.hisp.dhis.trackedentity.TrackedEntityService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-class ProgramMessageServiceTest extends TransactionalIntegrationTest {
+@Transactional
+class ProgramMessageServiceTest extends PostgresIntegrationTestBase {
   private OrganisationUnit ouA;
 
   private OrganisationUnit ouB;
@@ -73,7 +78,7 @@ class ProgramMessageServiceTest extends TransactionalIntegrationTest {
 
   private Set<DeliveryChannel> channels = new HashSet<>();
 
-  private ProgramMessageQueryParams params;
+  private ProgramMessageOperationParams params;
 
   private ProgramMessage pmsgA;
 
@@ -118,11 +123,8 @@ class ProgramMessageServiceTest extends TransactionalIntegrationTest {
 
   @Autowired private SmsConfigurationManager smsConfigurationManager;
 
-  // -------------------------------------------------------------------------
-  // Prerequisite
-  // -------------------------------------------------------------------------
-  @Override
-  public void setUpTest() {
+  @BeforeEach
+  void setUp() {
     ouA = createOrganisationUnit('A');
     ouA.setPhoneNumber(msisdn);
     ouB = createOrganisationUnit('B');
@@ -148,7 +150,7 @@ class ProgramMessageServiceTest extends TransactionalIntegrationTest {
     ouUids.add(ouA.getUid());
     // ouSet.add( ouB );
     trackedEntityA = createTrackedEntity(ouA);
-    trackedEntityService.addTrackedEntity(trackedEntityA);
+    manager.save(trackedEntityA);
     recipientsA = new ProgramMessageRecipients();
     recipientsA.setOrganisationUnit(ouA);
     recipientsA.setTrackedEntity(trackedEntityA);
@@ -186,10 +188,12 @@ class ProgramMessageServiceTest extends TransactionalIntegrationTest {
     pmsgA.setUid(uidA);
     pmsgB.setUid(uidB);
     pmsgC.setUid(uidC);
-    params = new ProgramMessageQueryParams();
-    params.setOrganisationUnit(ouUids);
-    params.setEnrollment(enrollmentA);
-    params.setMessageStatus(messageStatus);
+    params =
+        ProgramMessageOperationParams.builder()
+            .ou(ouUids)
+            .enrollment(UID.of(enrollmentA))
+            .messageStatus(messageStatus)
+            .build();
     bulkSmsConfig = new BulkSmsGatewayConfig();
     bulkSmsConfig.setDefault(true);
     bulkSmsConfig.setName("bulk");
@@ -211,13 +215,6 @@ class ProgramMessageServiceTest extends TransactionalIntegrationTest {
     programMessageService.deleteProgramMessage(pmsgA);
     ProgramMessage programMessage = programMessageService.getProgramMessage(pmsgAId.intValue());
     assertNull(programMessage);
-  }
-
-  @Test
-  void testExists() {
-    programMessageService.saveProgramMessage(pmsgA);
-    boolean exists = programMessageService.exists(uidA);
-    assertTrue(exists);
   }
 
   @Test
@@ -248,7 +245,7 @@ class ProgramMessageServiceTest extends TransactionalIntegrationTest {
   }
 
   @Test
-  void testGetProgramMessageByQuery() {
+  void testGetProgramMessageByQuery() throws NotFoundException {
     programMessageService.saveProgramMessage(pmsgA);
     programMessageService.saveProgramMessage(pmsgB);
     List<ProgramMessage> list = programMessageService.getProgramMessages(params);

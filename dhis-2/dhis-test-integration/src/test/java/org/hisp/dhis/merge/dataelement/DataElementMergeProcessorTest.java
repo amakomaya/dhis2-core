@@ -83,6 +83,7 @@ import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.organisationunit.OrganisationUnitLevel;
 import org.hisp.dhis.organisationunit.OrganisationUnitService;
 import org.hisp.dhis.period.Period;
+import org.hisp.dhis.period.PeriodService;
 import org.hisp.dhis.period.PeriodType;
 import org.hisp.dhis.period.PeriodTypeEnum;
 import org.hisp.dhis.predictor.Predictor;
@@ -107,7 +108,7 @@ import org.hisp.dhis.programrule.ProgramRuleVariableStore;
 import org.hisp.dhis.sms.command.SMSCommand;
 import org.hisp.dhis.sms.command.code.SMSCode;
 import org.hisp.dhis.sms.command.hibernate.SMSCommandStore;
-import org.hisp.dhis.test.integration.SingleSetupIntegrationTestBase;
+import org.hisp.dhis.test.integration.PostgresIntegrationTestBase;
 import org.hisp.dhis.trackedentity.TrackedEntity;
 import org.hisp.dhis.trackedentity.TrackedEntityDataElementDimension;
 import org.hisp.dhis.trackedentity.TrackedEntityDataValueChangeLogQueryParams;
@@ -117,7 +118,10 @@ import org.hisp.dhis.util.DateUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * All the tests in this class basically test the same thing:
@@ -129,9 +133,12 @@ import org.springframework.beans.factory.annotation.Autowired;
  * <p>- Check that source DataElements have had their references removed/replaced with the target
  * DataElement
  */
-class DataElementMergeProcessorTest extends SingleSetupIntegrationTestBase {
+@TestInstance(Lifecycle.PER_CLASS)
+@Transactional
+class DataElementMergeProcessorTest extends PostgresIntegrationTestBase {
 
   @Autowired private DataElementService dataElementService;
+  @Autowired private PeriodService periodService;
   @Autowired private DataElementMergeProcessor mergeProcessor;
   @Autowired private MinMaxDataElementStore minMaxDataElementStore;
   @Autowired private EventVisualizationStore eventVisualizationStore;
@@ -2270,7 +2277,9 @@ class DataElementMergeProcessorTest extends SingleSetupIntegrationTestBase {
     p2.setPeriodType(PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY));
     Period p3 = createPeriod(DateUtils.parseDate("2024-3-4"), DateUtils.parseDate("2024-3-4"));
     p3.setPeriodType(PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY));
-    identifiableObjectManager.save(List.of(p1, p2, p3));
+    periodService.addPeriod(p1);
+    periodService.addPeriod(p2);
+    periodService.addPeriod(p3);
 
     DataValue dv1 = createDataValue(deSource1, p1, ou1, "value1", coc1);
     DataValue dv2 = createDataValue(deSource2, p2, ou1, "value2", coc1);
@@ -2303,7 +2312,7 @@ class DataElementMergeProcessorTest extends SingleSetupIntegrationTestBase {
     // given
     Period p1 = createPeriod(DateUtils.parseDate("2024-1-4"), DateUtils.parseDate("2024-1-4"));
     p1.setPeriodType(PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY));
-    identifiableObjectManager.save(p1);
+    periodService.addPeriod(p1);
 
     // data values have the same (period, orgUnit, coc, aoc) triggering duplicate merge path
     DataValue dv1 = createDataValue(deSource1, p1, ou1, "value1", coc1);
@@ -2353,7 +2362,9 @@ class DataElementMergeProcessorTest extends SingleSetupIntegrationTestBase {
     p2.setPeriodType(PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY));
     Period p3 = createPeriod(DateUtils.parseDate("2024-3-4"), DateUtils.parseDate("2024-3-4"));
     p3.setPeriodType(PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY));
-    identifiableObjectManager.save(List.of(p1, p2, p3));
+    periodService.addPeriod(p1);
+    periodService.addPeriod(p2);
+    periodService.addPeriod(p3);
 
     DataValue dv1 = createDataValue(deSource1, p1, ou1, "value1", coc1);
     DataValue dv2 = createDataValue(deSource2, p2, ou1, "value2", coc1);
@@ -2395,7 +2406,9 @@ class DataElementMergeProcessorTest extends SingleSetupIntegrationTestBase {
     p2.setPeriodType(PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY));
     Period p3 = createPeriod(DateUtils.parseDate("2024-3-4"), DateUtils.parseDate("2024-3-4"));
     p3.setPeriodType(PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY));
-    identifiableObjectManager.save(List.of(p1, p2, p3));
+    periodService.addPeriod(p1);
+    periodService.addPeriod(p2);
+    periodService.addPeriod(p3);
 
     DataValue dv1 = createDataValue(deSource1, p1, ou1, "value1", coc1);
     DataValue dv2 = createDataValue(deSource2, p2, ou1, "value2", coc1);
@@ -2432,7 +2445,7 @@ class DataElementMergeProcessorTest extends SingleSetupIntegrationTestBase {
     // given
     Period p1 = createPeriod(DateUtils.parseDate("2024-1-4"), DateUtils.parseDate("2024-1-4"));
     p1.setPeriodType(PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY));
-    identifiableObjectManager.save(p1);
+    periodService.addPeriod(p1);
 
     DataValueAudit dva1 = createDataValueAudit(deSource1, "1", p1);
     DataValueAudit dva2 = createDataValueAudit(deSource1, "2", p1);
@@ -2477,7 +2490,7 @@ class DataElementMergeProcessorTest extends SingleSetupIntegrationTestBase {
     // given
     Period p1 = createPeriod(DateUtils.parseDate("2024-1-4"), DateUtils.parseDate("2024-1-4"));
     p1.setPeriodType(PeriodType.getPeriodType(PeriodTypeEnum.MONTHLY));
-    identifiableObjectManager.save(p1);
+    periodService.addPeriod(p1);
 
     DataValueAudit dva1 = createDataValueAudit(deSource1, "1", p1);
     DataValueAudit dva2 = createDataValueAudit(deSource1, "2", p1);

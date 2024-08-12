@@ -29,12 +29,7 @@ package org.hisp.dhis.test.webapi;
 
 import static org.hisp.dhis.test.web.WebClientUtils.failOnException;
 
-import javax.persistence.EntityManager;
-import org.hisp.dhis.test.DhisConvenienceTest;
-import org.hisp.dhis.test.config.H2DhisConfiguration;
-import org.hisp.dhis.test.utils.TestUtils;
-import org.hisp.dhis.user.User;
-import org.hisp.dhis.user.UserService;
+import org.hisp.dhis.test.config.H2DhisTestConfig;
 import org.hisp.dhis.webapi.security.config.WebMvcConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,34 +50,16 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
  */
 @ContextConfiguration(
     inheritLocations = false,
-    classes = {H2DhisConfiguration.class, WebMvcConfig.class})
+    classes = {H2DhisTestConfig.class, WebMvcConfig.class})
 public abstract class ControllerWithApiTokenAuthTestBase extends H2ControllerIntegrationTestBase {
-  @Autowired private UserService _userService;
-
-  @Autowired private EntityManager entityManager;
-
   @Autowired private FilterChainProxy springSecurityFilterChain;
 
-  @Override
   @BeforeEach
-  void setup() {
-    userService = _userService;
-    clearSecurityContext();
-
-    User randomAdminUser =
-        DhisConvenienceTest.createRandomAdminUserWithEntityManager(entityManager);
-    injectSecurityContextUser(randomAdminUser);
-
-    adminUser = createAndAddAdminUser("ALL");
-
+  void setupMockMvc() {
     mvc =
         MockMvcBuilders.webAppContextSetup(webApplicationContext)
             .addFilter(springSecurityFilterChain)
             .build();
-
-    injectSecurityContextUser(adminUser);
-
-    TestUtils.executeStartupRoutines(webApplicationContext);
   }
 
   @Override

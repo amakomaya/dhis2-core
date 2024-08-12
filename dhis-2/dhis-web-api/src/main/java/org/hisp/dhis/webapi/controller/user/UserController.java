@@ -89,8 +89,6 @@ import org.hisp.dhis.feedback.NotFoundException;
 import org.hisp.dhis.feedback.ObjectReport;
 import org.hisp.dhis.feedback.Status;
 import org.hisp.dhis.fieldfilter.Defaults;
-import org.hisp.dhis.hibernate.exception.CreateAccessDeniedException;
-import org.hisp.dhis.hibernate.exception.UpdateAccessDeniedException;
 import org.hisp.dhis.importexport.ImportStrategy;
 import org.hisp.dhis.organisationunit.OrganisationUnitService;
 import org.hisp.dhis.query.Order;
@@ -116,7 +114,6 @@ import org.hisp.dhis.user.UserSetting;
 import org.hisp.dhis.user.UserSettingKey;
 import org.hisp.dhis.user.Users;
 import org.hisp.dhis.webapi.controller.AbstractCrudController;
-import org.hisp.dhis.webapi.openapi.Api;
 import org.hisp.dhis.webapi.utils.HttpServletRequestPaths;
 import org.hisp.dhis.webapi.webdomain.WebMetadata;
 import org.hisp.dhis.webapi.webdomain.WebOptions;
@@ -262,7 +259,7 @@ public class UserController extends AbstractCrudController<User> {
   @OpenApi.Document(group = Group.QUERY)
   public @ResponseBody ResponseEntity<ObjectNode> getObjectProperty(
       @OpenApi.Param(UID.class) @PathVariable("uid") String pvUid,
-      @OpenApi.Param(Api.PropertyNames.class) @PathVariable("property") String pvProperty,
+      @OpenApi.Param(OpenApi.PropertyNames.class) @PathVariable("property") String pvProperty,
       @RequestParam Map<String, String> rpParameters,
       TranslateParams translateParams,
       @CurrentUser UserDetails currentUser,
@@ -280,8 +277,7 @@ public class UserController extends AbstractCrudController<User> {
     }
 
     if (!aclService.canRead(currentUser, user)) {
-      throw new CreateAccessDeniedException(
-          "You don't have the proper permissions to access this user.");
+      throw new ForbiddenException("You don't have the proper permissions to access this user.");
     }
 
     return ResponseEntity.ok(userControllerUtils.getUserDataApprovalWorkflows(user));
@@ -554,7 +550,8 @@ public class UserController extends AbstractCrudController<User> {
    */
   @PostMapping("/{uid}/twoFA/disabled")
   @ResponseBody
-  public WebMessage disableTwoFa(@PathVariable("uid") String uid, @CurrentUser User currentUser) {
+  public WebMessage disableTwoFa(@PathVariable("uid") String uid, @CurrentUser User currentUser)
+      throws ForbiddenException {
     List<ErrorReport> errors = new ArrayList<>();
     userService.privilegedTwoFactorDisable(currentUser, uid, errors::add);
 
@@ -855,7 +852,8 @@ public class UserController extends AbstractCrudController<User> {
    * @param disable boolean value, true for disable, false for enable
    * @throws WebMessageException thrown if "current" user is not allowed to modify the user
    */
-  private void setDisabled(String uid, boolean disable) throws WebMessageException {
+  private void setDisabled(String uid, boolean disable)
+      throws WebMessageException, ForbiddenException {
     User userToModify = userService.getUser(uid);
     checkCurrentUserCanModify(userToModify);
 
@@ -869,13 +867,13 @@ public class UserController extends AbstractCrudController<User> {
     }
   }
 
-  private void checkCurrentUserCanModify(User userToModify) throws WebMessageException {
+  private void checkCurrentUserCanModify(User userToModify)
+      throws WebMessageException, ForbiddenException {
 
     UserDetails currentUserDetails = CurrentUserUtil.getCurrentUserDetails();
 
     if (!aclService.canUpdate(currentUserDetails, userToModify)) {
-      throw new UpdateAccessDeniedException(
-          "You don't have the proper permissions to update this object.");
+      throw new ForbiddenException("You don't have the proper permissions to update this object.");
     }
 
     if (!userService.canAddOrUpdateUser(getUids(userToModify.getGroups()))
@@ -886,7 +884,8 @@ public class UserController extends AbstractCrudController<User> {
     }
   }
 
-  private void setExpires(String uid, Date accountExpiry) throws WebMessageException {
+  private void setExpires(String uid, Date accountExpiry)
+      throws WebMessageException, ForbiddenException {
     User userToModify = userService.getUser(uid);
     checkCurrentUserCanModify(userToModify);
 

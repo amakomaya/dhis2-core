@@ -27,7 +27,7 @@
  */
 package org.hisp.dhis.test.junit;
 
-import static org.hisp.dhis.test.DhisConvenienceTest.clearSecurityContext;
+import static org.hisp.dhis.test.TestBase.clearSecurityContext;
 import static org.junit.platform.commons.util.AnnotationUtils.findAnnotation;
 
 import java.lang.reflect.Field;
@@ -39,6 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.hibernate.FlushMode;
 import org.hibernate.annotations.QueryHints;
 import org.hisp.dhis.dbms.DbmsManager;
+import org.hisp.dhis.test.TestBase;
 import org.hisp.dhis.test.utils.TestUtils;
 import org.hisp.dhis.user.User;
 import org.hisp.dhis.user.UserService;
@@ -66,8 +67,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <ul>
  *   <li>bind the JPA entity manager to the thread in case the test is not annotated with {@link
  *       Transactional}
- *   <li>set the {@link UserService} in the {@link org.hisp.dhis.test.DhisConvenienceTest} so tests
- *       can create users
+ *   <li>set the {@link UserService} in the {@link TestBase} so tests can create users
  *   <li>create an admin user and inject it into the Spring security context
  *   <li>execute the startup routines
  * </ul>
@@ -96,7 +96,7 @@ public class SpringIntegrationTestExtension
 
   @Override
   public void beforeAll(ExtensionContext context) throws Exception {
-    if (!isTestLifecyclePerClass(context)) {
+    if (isTestLifecyclePerMethod(context)) {
       return;
     }
 
@@ -116,7 +116,7 @@ public class SpringIntegrationTestExtension
 
   @Override
   public void afterAll(ExtensionContext context) {
-    if (!isTestLifecyclePerClass(context)) {
+    if (isTestLifecyclePerMethod(context)) {
       return;
     }
 
@@ -148,10 +148,19 @@ public class SpringIntegrationTestExtension
   private void tearDown(ExtensionContext context) {
     clearSecurityContext();
 
+    // https://docs.spring.io/spring-framework/reference/testing/testcontext-framework/tx.html#testcontext-tx-attribute-support
+    // > methods annotated with JUnit @BeforeAll or @AfterAll are not run within a test-managed
+    // transaction
+    // This means we need to empty the DB even if a test class is annotated with @Transactional if
+    // its test lifecycle is set to class
     if (isTestLifecyclePerClass(context) || !isAnnotatedWithTransactional(context)) {
       unbindSession(context);
       emptyDatabase(context);
     }
+  }
+
+  private static boolean isTestLifecyclePerMethod(ExtensionContext context) {
+    return !isTestLifecyclePerClass(context);
   }
 
   private static boolean isTestLifecyclePerClass(ExtensionContext context) {

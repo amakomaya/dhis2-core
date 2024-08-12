@@ -28,7 +28,6 @@
 package org.hisp.dhis.program;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,7 +36,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.hisp.dhis.category.CategoryService;
 import org.hisp.dhis.common.CodeGenerator;
 import org.hisp.dhis.common.DeliveryChannel;
 import org.hisp.dhis.common.IdentifiableObjectManager;
@@ -48,33 +46,29 @@ import org.hisp.dhis.program.message.ProgramMessageQueryParams;
 import org.hisp.dhis.program.message.ProgramMessageRecipients;
 import org.hisp.dhis.program.message.ProgramMessageStatus;
 import org.hisp.dhis.program.message.ProgramMessageStore;
-import org.hisp.dhis.test.integration.TransactionalIntegrationTest;
+import org.hisp.dhis.test.integration.PostgresIntegrationTestBase;
 import org.hisp.dhis.trackedentity.TrackedEntity;
-import org.hisp.dhis.trackedentity.TrackedEntityService;
 import org.joda.time.DateTime;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Zubair <rajazubair.asghar@gmail.com>
  */
-class ProgramMessageStoreTest extends TransactionalIntegrationTest {
+@Transactional
+class ProgramMessageStoreTest extends PostgresIntegrationTestBase {
 
   @Autowired private ProgramMessageStore programMessageStore;
 
-  @Autowired private EnrollmentStore enrollmentStore;
-
   @Autowired private OrganisationUnitService orgUnitService;
-
-  @Autowired private TrackedEntityService trackedEntityService;
 
   @Autowired private ProgramService programService;
 
   @Autowired private ProgramStageService programStageService;
 
   @Autowired private IdentifiableObjectManager manager;
-
-  @Autowired private CategoryService categoryService;
 
   private Enrollment enrollmentA;
 
@@ -94,8 +88,8 @@ class ProgramMessageStoreTest extends TransactionalIntegrationTest {
 
   private final String notificationTemplate = CodeGenerator.generateUid();
 
-  @Override
-  public void setUpTest() {
+  @BeforeEach
+  void setUp() {
     OrganisationUnit orgUnitA = createOrganisationUnit('A');
     OrganisationUnit orgUnitB = createOrganisationUnit('B');
     orgUnitService.addOrganisationUnit(orgUnitA);
@@ -110,7 +104,7 @@ class ProgramMessageStoreTest extends TransactionalIntegrationTest {
     programA.setProgramStages(programStages);
     programService.updateProgram(programA);
     TrackedEntity trackedEntityB = createTrackedEntity(orgUnitA);
-    trackedEntityService.addTrackedEntity(trackedEntityB);
+    manager.save(trackedEntityB);
     DateTime testDate1 = DateTime.now();
     testDate1.withTimeAtStartOfDay();
     testDate1 = testDate1.minusDays(70);
@@ -126,7 +120,7 @@ class ProgramMessageStoreTest extends TransactionalIntegrationTest {
     Set<String> orgUnits = new HashSet<>();
     orgUnits.add(orgUnitA.getUid());
     TrackedEntity trackedEntityA = createTrackedEntity(orgUnitA);
-    trackedEntityService.addTrackedEntity(trackedEntityA);
+    manager.save(trackedEntityA);
     ProgramMessageRecipients recipientsA = new ProgramMessageRecipients();
     recipientsA.setOrganisationUnit(orgUnitA);
     recipientsA.setTrackedEntity(trackedEntityA);
@@ -181,8 +175,7 @@ class ProgramMessageStoreTest extends TransactionalIntegrationTest {
     pmsgA.setUid(uidA);
     pmsgB.setUid(uidB);
     pmsgC.setUid(uidC);
-    params = new ProgramMessageQueryParams();
-    params.setOrganisationUnit(orgUnits);
+    params = ProgramMessageQueryParams.builder().organisationUnit(orgUnits).build();
   }
 
   @Test
@@ -212,18 +205,8 @@ class ProgramMessageStoreTest extends TransactionalIntegrationTest {
   }
 
   @Test
-  void testProgramMessageExists() {
-    programMessageStore.save(pmsgA);
-    programMessageStore.save(pmsgB);
-    assertTrue(programMessageStore.exists(pmsgA.getUid()));
-    assertTrue(programMessageStore.exists(pmsgB.getUid()));
-    assertFalse(programMessageStore.exists("22343"));
-    assertFalse(programMessageStore.exists(null));
-  }
-
-  @Test
   void testGetProgramMessageByEnrollment() {
-    enrollmentStore.save(enrollmentA);
+    manager.save(enrollmentA);
     pmsgA.setEnrollment(enrollmentA);
     pmsgB.setEnrollment(enrollmentA);
     programMessageStore.save(pmsgA);
@@ -238,7 +221,7 @@ class ProgramMessageStoreTest extends TransactionalIntegrationTest {
 
   @Test
   void testGetProgramMessageByEvent() {
-    enrollmentStore.save(enrollmentA);
+    manager.save(enrollmentA);
     manager.save(eventA);
     pmsgA.setEvent(eventA);
     pmsgB.setEvent(eventA);
@@ -266,7 +249,7 @@ class ProgramMessageStoreTest extends TransactionalIntegrationTest {
 
   @Test
   void testGetProgramMessageByMultipleParameters() {
-    enrollmentStore.save(enrollmentA);
+    manager.save(enrollmentA);
     pmsgA.setEnrollment(enrollmentA);
     pmsgB.setEnrollment(enrollmentA);
     programMessageStore.save(pmsgA);

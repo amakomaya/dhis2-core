@@ -32,7 +32,6 @@ import static org.hisp.dhis.test.utils.Assertions.assertNotEmpty;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import org.hisp.dhis.common.IdentifiableObjectManager;
@@ -41,21 +40,25 @@ import org.hisp.dhis.common.OrganisationUnitSelectionMode;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.organisationunit.OrganisationUnitService;
 import org.hisp.dhis.program.Enrollment;
-import org.hisp.dhis.program.EnrollmentService;
 import org.hisp.dhis.program.Program;
 import org.hisp.dhis.program.ProgramService;
 import org.hisp.dhis.setting.SettingKey;
 import org.hisp.dhis.setting.SystemSettingManager;
-import org.hisp.dhis.test.integration.SingleSetupIntegrationTestBase;
+import org.hisp.dhis.test.integration.PostgresIntegrationTestBase;
 import org.hisp.dhis.user.User;
-import org.hisp.dhis.user.UserService;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Zubair Asghar
  */
-class TrackedEntityQueryLimitTest extends SingleSetupIntegrationTestBase {
+@TestInstance(Lifecycle.PER_CLASS)
+@Transactional
+class TrackedEntityQueryLimitTest extends PostgresIntegrationTestBase {
 
   @Autowired private OrganisationUnitService organisationUnitService;
 
@@ -65,11 +68,7 @@ class TrackedEntityQueryLimitTest extends SingleSetupIntegrationTestBase {
 
   @Autowired private ProgramService programService;
 
-  @Autowired private EnrollmentService enrollmentService;
-
   @Autowired private SystemSettingManager systemSettingManager;
-
-  @Autowired private UserService _userService;
 
   @Autowired private IdentifiableObjectManager manager;
 
@@ -87,18 +86,11 @@ class TrackedEntityQueryLimitTest extends SingleSetupIntegrationTestBase {
 
   private User user;
 
-  @Override
-  protected void setUpTest() throws Exception {
-
-    Enrollment enrollment1;
-    Enrollment enrollment2;
-    Enrollment enrollment3;
-    Enrollment enrollment4;
-
+  @BeforeAll
+  void setUp() {
     TrackedEntityType trackedEntityType;
 
-    userService = _userService;
-    user = createAndInjectAdminUser();
+    user = getAdminUser();
 
     orgUnitA = createOrganisationUnit("A");
     organisationUnitService.addOrganisationUnit(orgUnitA);
@@ -109,6 +101,7 @@ class TrackedEntityQueryLimitTest extends SingleSetupIntegrationTestBase {
     trackedEntityTypeService.addTrackedEntityType(trackedEntityType);
 
     program = createProgram('P');
+    program.setOrganisationUnits(Set.of(orgUnitA));
     programService.addProgram(program);
 
     trackedEntity1 = createTrackedEntity(orgUnitA);
@@ -120,29 +113,31 @@ class TrackedEntityQueryLimitTest extends SingleSetupIntegrationTestBase {
     trackedEntity3.setTrackedEntityType(trackedEntityType);
     trackedEntity4.setTrackedEntityType(trackedEntityType);
 
-    trackedEntityService.addTrackedEntity(trackedEntity1);
-    trackedEntityService.addTrackedEntity(trackedEntity2);
-    trackedEntityService.addTrackedEntity(trackedEntity3);
-    trackedEntityService.addTrackedEntity(trackedEntity4);
+    manager.save(trackedEntity1);
+    manager.save(trackedEntity2);
+    manager.save(trackedEntity3);
+    manager.save(trackedEntity4);
 
-    enrollment1 = createEnrollment(program, trackedEntity1, orgUnitA);
-    enrollment2 = createEnrollment(program, trackedEntity2, orgUnitA);
-    enrollment3 = createEnrollment(program, trackedEntity3, orgUnitA);
-    enrollment4 = createEnrollment(program, trackedEntity4, orgUnitA);
+    User admin = getAdminUser();
+    admin.addOrganisationUnit(orgUnitA);
+    manager.update(admin);
 
+    Enrollment enrollment1 = createEnrollment(program, trackedEntity1, orgUnitA);
     manager.save(enrollment1);
+    trackedEntity1.getEnrollments().add(enrollment1);
+    manager.update(trackedEntity1);
+    Enrollment enrollment2 = createEnrollment(program, trackedEntity2, orgUnitA);
     manager.save(enrollment2);
+    trackedEntity2.getEnrollments().add(enrollment2);
+    manager.update(trackedEntity1);
+    Enrollment enrollment3 = createEnrollment(program, trackedEntity3, orgUnitA);
     manager.save(enrollment3);
+    trackedEntity3.getEnrollments().add(enrollment3);
+    manager.update(trackedEntity1);
+    Enrollment enrollment4 = createEnrollment(program, trackedEntity4, orgUnitA);
     manager.save(enrollment4);
-
-    enrollmentService.enrollTrackedEntity(
-        trackedEntity1, program, new Date(), new Date(), orgUnitA);
-    enrollmentService.enrollTrackedEntity(
-        trackedEntity2, program, new Date(), new Date(), orgUnitA);
-    enrollmentService.enrollTrackedEntity(
-        trackedEntity3, program, new Date(), new Date(), orgUnitA);
-    enrollmentService.enrollTrackedEntity(
-        trackedEntity4, program, new Date(), new Date(), orgUnitA);
+    trackedEntity4.getEnrollments().add(enrollment4);
+    manager.update(trackedEntity1);
 
     userService.addUser(user);
   }

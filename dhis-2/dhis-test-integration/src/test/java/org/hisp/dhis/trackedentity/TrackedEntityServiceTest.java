@@ -35,34 +35,43 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.hisp.dhis.common.CodeGenerator;
 import org.hisp.dhis.common.IdentifiableObjectManager;
 import org.hisp.dhis.common.QueryItem;
 import org.hisp.dhis.common.SortDirection;
+import org.hisp.dhis.common.UID;
 import org.hisp.dhis.feedback.NotFoundException;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.organisationunit.OrganisationUnitService;
 import org.hisp.dhis.program.Enrollment;
-import org.hisp.dhis.program.EnrollmentService;
 import org.hisp.dhis.program.Event;
 import org.hisp.dhis.program.Program;
 import org.hisp.dhis.program.ProgramService;
 import org.hisp.dhis.program.ProgramStage;
 import org.hisp.dhis.program.ProgramStageService;
 import org.hisp.dhis.security.acl.AccessStringHelper;
-import org.hisp.dhis.test.integration.IntegrationTestBase;
+import org.hisp.dhis.test.integration.PostgresIntegrationTestBase;
 import org.hisp.dhis.trackedentityattributevalue.TrackedEntityAttributeValue;
 import org.hisp.dhis.trackedentityattributevalue.TrackedEntityAttributeValueService;
 import org.hisp.dhis.tracker.imports.bundle.persister.TrackerObjectDeletionService;
 import org.hisp.dhis.user.User;
 import org.hisp.dhis.webapi.controller.event.mapper.OrderParam;
 import org.joda.time.DateTime;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * @author Chau Thu Tran
  */
-class TrackedEntityServiceTest extends IntegrationTestBase {
+class TrackedEntityServiceTest extends PostgresIntegrationTestBase {
+  private static final String TE_A_UID = uidWithPrefix('A');
+  private static final String TE_B_UID = uidWithPrefix('B');
+  private static final String TE_C_UID = uidWithPrefix('C');
+  private static final String TE_D_UID = uidWithPrefix('D');
+  private static final String ENROLLMENT_A_UID = UID.of(CodeGenerator.generateUid()).getValue();
+  private static final String EVENT_A_UID = UID.of(CodeGenerator.generateUid()).getValue();
+
   @Autowired private TrackedEntityService trackedEntityService;
 
   @Autowired private OrganisationUnitService organisationUnitService;
@@ -70,8 +79,6 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
   @Autowired private ProgramService programService;
 
   @Autowired private ProgramStageService programStageService;
-
-  @Autowired private EnrollmentService enrollmentService;
 
   @Autowired private TrackedEntityAttributeService attributeService;
 
@@ -105,14 +112,8 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   private TrackedEntityAttribute trackedEntityAttribute;
 
-  private User superUser;
-
-  @Override
-  public void setUpTest() {
-    //    super.userService = _userService;
-
-    this.superUser = getAdminUser();
-
+  @BeforeEach
+  void setUp() {
     trackedEntityType = createTrackedEntityType('A');
     TrackedEntityAttribute attrD = createTrackedEntityAttribute('D');
     TrackedEntityAttribute attrE = createTrackedEntityAttribute('E');
@@ -135,10 +136,10 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
     trackedEntityB1 = createTrackedEntity(organisationUnit);
     trackedEntityC1 = createTrackedEntity(organisationUnit);
     trackedEntityD1 = createTrackedEntity(organisationUnit);
-    trackedEntityA1.setUid("UID-A1");
-    trackedEntityB1.setUid("UID-B1");
-    trackedEntityC1.setUid("UID-C1");
-    trackedEntityD1.setUid("UID-D1");
+    trackedEntityA1.setUid(TE_A_UID);
+    trackedEntityB1.setUid(TE_B_UID);
+    trackedEntityC1.setUid(TE_C_UID);
+    trackedEntityD1.setUid(TE_D_UID);
     program = createProgram('A', new HashSet<>(), organisationUnit);
     programService.addProgram(program);
     ProgramStage stageA = createProgramStage('A', program);
@@ -155,10 +156,10 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
     incidentDate.withTimeAtStartOfDay();
     enrollment =
         new Enrollment(enrollmentDate.toDate(), incidentDate.toDate(), trackedEntityA1, program);
-    enrollment.setUid("UID-A");
+    enrollment.setUid(ENROLLMENT_A_UID);
     enrollment.setOrganisationUnit(organisationUnit);
     event = createEvent(stageA, enrollment, organisationUnit);
-    event.setUid("UID-Event-A");
+    event.setUid(EVENT_A_UID);
 
     trackedEntityType.setPublicAccess(AccessStringHelper.FULL);
     trackedEntityTypeService.addTrackedEntityType(trackedEntityType);
@@ -174,39 +175,39 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void testSaveTrackedEntity() {
-    long idA = trackedEntityService.addTrackedEntity(trackedEntityA1);
-    long idB = trackedEntityService.addTrackedEntity(trackedEntityB1);
-    assertNotNull(trackedEntityService.getTrackedEntity(idA));
-    assertNotNull(trackedEntityService.getTrackedEntity(idB));
+    manager.save(trackedEntityA1);
+    manager.save(trackedEntityB1);
+    assertNotNull(trackedEntityService.getTrackedEntity(trackedEntityA1.getUid()));
+    assertNotNull(trackedEntityService.getTrackedEntity(trackedEntityB1.getUid()));
   }
 
   @Test
   void testDeleteTrackedEntity() {
-    long idA = trackedEntityService.addTrackedEntity(trackedEntityA1);
-    long idB = trackedEntityService.addTrackedEntity(trackedEntityB1);
-    TrackedEntity trackedEntityA = trackedEntityService.getTrackedEntity(idA);
-    TrackedEntity trackedEntityB = trackedEntityService.getTrackedEntity(idB);
+    manager.save(trackedEntityA1);
+    manager.save(trackedEntityB1);
+    TrackedEntity trackedEntityA = trackedEntityService.getTrackedEntity(trackedEntityA1.getUid());
+    TrackedEntity trackedEntityB = trackedEntityService.getTrackedEntity(trackedEntityB1.getUid());
     assertNotNull(trackedEntityA);
     assertNotNull(trackedEntityB);
-    trackedEntityService.deleteTrackedEntity(trackedEntityA1);
+    manager.delete(trackedEntityA1);
     assertNull(trackedEntityService.getTrackedEntity(trackedEntityA.getUid()));
     assertNotNull(trackedEntityService.getTrackedEntity(trackedEntityB.getUid()));
-    trackedEntityService.deleteTrackedEntity(trackedEntityB1);
+    manager.delete(trackedEntityB1);
     assertNull(trackedEntityService.getTrackedEntity(trackedEntityA.getUid()));
     assertNull(trackedEntityService.getTrackedEntity(trackedEntityB.getUid()));
   }
 
   @Test
   void testDeleteTrackedEntityAndLinkedEnrollmentsAndEvents() throws NotFoundException {
-    long idA = trackedEntityService.addTrackedEntity(trackedEntityA1);
+    manager.save(trackedEntityA1);
     manager.save(enrollment);
     manager.save(event);
     long eventIdA = event.getId();
     enrollment.setEvents(Set.of(event));
     trackedEntityA1.setEnrollments(Set.of(enrollment));
     manager.update(enrollment);
-    trackedEntityService.updateTrackedEntity(trackedEntityA1);
-    TrackedEntity trackedEntityA = trackedEntityService.getTrackedEntity(idA);
+    manager.update(trackedEntityA1);
+    TrackedEntity trackedEntityA = trackedEntityService.getTrackedEntity(trackedEntityA1.getUid());
     Enrollment psA = manager.get(Enrollment.class, enrollment.getUid());
     Event eventA = manager.get(Event.class, eventIdA);
     assertNotNull(trackedEntityA);
@@ -220,27 +221,27 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void testUpdateTrackedEntity() {
-    long idA = trackedEntityService.addTrackedEntity(trackedEntityA1);
-    assertNotNull(trackedEntityService.getTrackedEntity(idA));
+    manager.save(trackedEntityA1);
+    assertNotNull(trackedEntityService.getTrackedEntity(trackedEntityA1.getUid()));
     trackedEntityA1.setName("B");
-    trackedEntityService.updateTrackedEntity(trackedEntityA1);
-    assertEquals("B", trackedEntityService.getTrackedEntity(idA).getName());
+    manager.update(trackedEntityA1);
+    assertEquals("B", trackedEntityService.getTrackedEntity(trackedEntityA1.getUid()).getName());
   }
 
   @Test
   void testGetTrackedEntityById() {
-    long idA = trackedEntityService.addTrackedEntity(trackedEntityA1);
-    long idB = trackedEntityService.addTrackedEntity(trackedEntityB1);
-    assertEquals(trackedEntityA1, trackedEntityService.getTrackedEntity(idA));
-    assertEquals(trackedEntityB1, trackedEntityService.getTrackedEntity(idB));
+    manager.save(trackedEntityA1);
+    manager.save(trackedEntityB1);
+    assertEquals(trackedEntityA1, trackedEntityService.getTrackedEntity(trackedEntityA1.getUid()));
+    assertEquals(trackedEntityB1, trackedEntityService.getTrackedEntity(trackedEntityB1.getUid()));
   }
 
   @Test
   void testGetTrackedEntityByUid() {
     trackedEntityA1.setUid("A1");
     trackedEntityB1.setUid("B1");
-    trackedEntityService.addTrackedEntity(trackedEntityA1);
-    trackedEntityService.addTrackedEntity(trackedEntityB1);
+    manager.save(trackedEntityA1);
+    manager.save(trackedEntityB1);
     assertEquals(trackedEntityA1, trackedEntityService.getTrackedEntity("A1"));
     assertEquals(trackedEntityB1, trackedEntityService.getTrackedEntity("B1"));
   }
@@ -248,14 +249,14 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
   @Test
   void testStoredByColumnForTrackedEntity() {
     trackedEntityA1.setStoredBy("test");
-    trackedEntityService.addTrackedEntity(trackedEntityA1);
+    manager.save(trackedEntityA1);
     TrackedEntity trackedEntity = trackedEntityService.getTrackedEntity(trackedEntityA1.getUid());
     assertEquals("test", trackedEntity.getStoredBy());
   }
 
   @Test
   void shouldOrderEntitiesByCreatedInAscOrder() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     trackedEntityA1.setCreated(DateTime.now().plusDays(1).toDate());
     trackedEntityB1.setCreated(DateTime.now().toDate());
@@ -281,7 +282,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderEntitiesByCreatedInDescOrder() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     trackedEntityA1.setCreated(DateTime.now().plusDays(1).toDate());
     trackedEntityB1.setCreated(DateTime.now().toDate());
@@ -307,7 +308,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderEntitiesByCreatedAtInAscOrder() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     trackedEntityA1.setCreated(DateTime.now().plusDays(1).toDate());
     trackedEntityB1.setCreated(DateTime.now().toDate());
@@ -333,7 +334,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderEntitiesByCreatedAtInDescOrder() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     DateTime now = DateTime.now();
 
@@ -362,19 +363,19 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderEntitiesByUpdatedAtInAscOrder() throws InterruptedException {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     addEntityInstances();
     // lastupdated is automatically set by the store; update entities in a certain order and
     //   expect
     // that to be returned
-    trackedEntityService.updateTrackedEntity(trackedEntityD1);
+    manager.update(trackedEntityD1);
     Thread.sleep(1000);
-    trackedEntityService.updateTrackedEntity(trackedEntityB1);
+    manager.update(trackedEntityB1);
     Thread.sleep(1000);
-    trackedEntityService.updateTrackedEntity(trackedEntityC1);
+    manager.update(trackedEntityC1);
     Thread.sleep(1000);
-    trackedEntityService.updateTrackedEntity(trackedEntityA1);
+    manager.update(trackedEntityA1);
 
     TrackedEntityQueryParams params = new TrackedEntityQueryParams();
     params.setOrgUnits(Set.of(organisationUnit));
@@ -393,19 +394,19 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderEntitiesByUpdatedAtInDescOrder() throws InterruptedException {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     addEntityInstances();
     // lastupdated is automatically set by the store; update entities in a certain order and
     //   expect
     // that to be returned
-    trackedEntityService.updateTrackedEntity(trackedEntityD1);
+    manager.update(trackedEntityD1);
     Thread.sleep(1000);
-    trackedEntityService.updateTrackedEntity(trackedEntityB1);
+    manager.update(trackedEntityB1);
     Thread.sleep(1000);
-    trackedEntityService.updateTrackedEntity(trackedEntityC1);
+    manager.update(trackedEntityC1);
     Thread.sleep(1000);
-    trackedEntityService.updateTrackedEntity(trackedEntityA1);
+    manager.update(trackedEntityA1);
 
     TrackedEntityQueryParams params = new TrackedEntityQueryParams();
 
@@ -425,7 +426,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderEntitiesByTrackedEntityUidInDescOrder() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     addEntityInstances();
 
@@ -447,7 +448,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderEntitiesByUpdatedAtClientInDescOrder() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     trackedEntityA1.setLastUpdatedAtClient(DateTime.now().plusDays(1).toDate());
     trackedEntityB1.setLastUpdatedAtClient(DateTime.now().toDate());
@@ -473,7 +474,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderEntitiesByEnrolledAtDateInDescOrder() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     addEntityInstances();
     manager.save(enrollment);
@@ -499,7 +500,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldSortEntitiesAndKeepOrderOfParamsWhenMultipleStaticFieldsSupplied() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
     trackedEntityA1.setInactive(true);
     trackedEntityB1.setInactive(true);
     trackedEntityC1.setInactive(false);
@@ -532,7 +533,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderEntitiesByDefaultUsingTrackedEntityIdInAscOrderWhenNoOrderParamProvided() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
     addEntityInstances();
 
     TrackedEntityQueryParams params = new TrackedEntityQueryParams();
@@ -551,7 +552,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldOrderByNonStaticFieldWhenNonStaticFieldProvided() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
     trackedEntityAttribute.setDisplayInListNoProgram(true);
     attributeService.addTrackedEntityAttribute(trackedEntityAttribute);
 
@@ -578,7 +579,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldSortEntitiesAndKeepOrderOfParamsWhenStaticAndNonStaticFieldsSupplied() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
     trackedEntityAttribute.setDisplayInListNoProgram(true);
     attributeService.addTrackedEntityAttribute(trackedEntityAttribute);
 
@@ -614,7 +615,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldSortEntitiesByAttributeDescendingWhenAttributeDescendingProvided() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     TrackedEntityAttribute tea = createTrackedEntityAttribute();
 
@@ -643,7 +644,7 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
 
   @Test
   void shouldSortEntitiesByAttributeAscendingWhenAttributeAscendingProvided() {
-    injectSecurityContextUser(superUser);
+    injectAdminIntoSecurityContext();
 
     TrackedEntityAttribute tea = createTrackedEntityAttribute();
 
@@ -681,10 +682,10 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
     programService.updateProgram(program);
 
     enrollment = new Enrollment(enrollmentDate, DateTime.now().toDate(), trackedEntity, program);
-    enrollment.setUid("UID-" + programStage);
+    enrollment.setUid(uidWithPrefix(programStage));
     enrollment.setOrganisationUnit(organisationUnit);
     event = new Event(enrollment, stage);
-    enrollment.setUid("UID-PSI-" + programStage);
+    enrollment.setUid(uidWithPrefix(programStage));
     enrollment.setOrganisationUnit(organisationUnit);
 
     manager.save(enrollment);
@@ -695,15 +696,15 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
     trackedEntityB1.setTrackedEntityType(trackedEntityType);
     trackedEntityC1.setTrackedEntityType(trackedEntityType);
     trackedEntityD1.setTrackedEntityType(trackedEntityType);
-    trackedEntityService.addTrackedEntity(trackedEntityA1);
-    trackedEntityService.addTrackedEntity(trackedEntityB1);
-    trackedEntityService.addTrackedEntity(trackedEntityC1);
-    trackedEntityService.addTrackedEntity(trackedEntityD1);
+    manager.save(trackedEntityA1);
+    manager.save(trackedEntityB1);
+    manager.save(trackedEntityC1);
+    manager.save(trackedEntityD1);
   }
 
   private void setUpEntityAndAttributeValue(TrackedEntity trackedEntity, String attributeValue) {
     trackedEntity.setTrackedEntityType(trackedEntityType);
-    trackedEntityService.addTrackedEntity(trackedEntity);
+    manager.save(trackedEntity);
 
     TrackedEntityAttributeValue trackedEntityAttributeValue = new TrackedEntityAttributeValue();
     trackedEntityAttributeValue.setAttribute(trackedEntityAttribute);
@@ -728,5 +729,10 @@ class TrackedEntityServiceTest extends IntegrationTestBase {
     trackedEntityAttributeValueA1.setValue(value);
 
     attributeValueService.addTrackedEntityAttributeValue(trackedEntityAttributeValueA1);
+  }
+
+  private static String uidWithPrefix(char prefix) {
+    String value = prefix + CodeGenerator.generateUid().substring(0, 10);
+    return UID.of(value).getValue();
   }
 }

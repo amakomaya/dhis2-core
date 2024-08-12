@@ -32,9 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.google.common.collect.Lists;
 import java.util.List;
+import org.hisp.dhis.common.IdentifiableObjectManager;
+import org.hisp.dhis.dbms.DbmsManager;
 import org.hisp.dhis.organisationunit.OrganisationUnit;
 import org.hisp.dhis.organisationunit.OrganisationUnitService;
-import org.hisp.dhis.test.integration.IntegrationTestBase;
+import org.hisp.dhis.test.integration.PostgresIntegrationTestBase;
 import org.hisp.dhis.trackedentity.TrackedEntity;
 import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
 import org.hisp.dhis.trackedentity.TrackedEntityAttributeService;
@@ -44,20 +46,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Disabled(
     "moveAttributes method do not really belong to a store now. We should a better place for it")
-class PotentialDuplicateStoreTEAVTest extends IntegrationTestBase {
+class PotentialDuplicateStoreTEAVTest extends PostgresIntegrationTestBase {
 
   @Autowired private HibernatePotentialDuplicateStore potentialDuplicateStore;
 
   @Autowired private TrackedEntityService trackedEntityService;
+
+  @Autowired private IdentifiableObjectManager manager;
 
   @Autowired private TrackedEntityAttributeService trackedEntityAttributeService;
 
   @Autowired private TrackedEntityAttributeValueService trackedEntityAttributeValueService;
 
   @Autowired private OrganisationUnitService organisationUnitService;
+
+  @Autowired private TransactionTemplate transactionTemplate;
+
+  @Autowired private DbmsManager dbmsManager;
 
   private TrackedEntity original;
 
@@ -76,15 +85,15 @@ class PotentialDuplicateStoreTEAVTest extends IntegrationTestBase {
   private TrackedEntityAttribute trackedEntityAttributeE;
 
   @BeforeEach
-  void setupTest() {
+  void setUp() {
     OrganisationUnit ou = createOrganisationUnit("OU_A");
     organisationUnitService.addOrganisationUnit(ou);
     original = createTrackedEntity(ou);
     duplicate = createTrackedEntity(ou);
     control = createTrackedEntity(ou);
-    trackedEntityService.addTrackedEntity(original);
-    trackedEntityService.addTrackedEntity(duplicate);
-    trackedEntityService.addTrackedEntity(control);
+    manager.save(original);
+    manager.save(duplicate);
+    manager.save(control);
     trackedEntityAttributeA = createTrackedEntityAttribute('A');
     trackedEntityAttributeB = createTrackedEntityAttribute('B');
     trackedEntityAttributeC = createTrackedEntityAttribute('C');

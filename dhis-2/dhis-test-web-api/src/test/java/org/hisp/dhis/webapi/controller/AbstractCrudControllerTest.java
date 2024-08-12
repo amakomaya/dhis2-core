@@ -87,7 +87,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
   void testGetObjectList() {
     JsonList<JsonUser> users =
         GET("/users/").content(HttpStatus.OK).getList("users", JsonUser.class);
-    assertEquals(2, users.size());
+    assertEquals(1, users.size());
     JsonUser user = users.get(0);
     assertStartsWith("First", user.getDisplayName());
   }
@@ -119,6 +119,39 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
             "[{'op': 'add', 'path': '/surname', 'value': 'Peter'}]"));
     assertEquals(
         "Peter", GET("/users/{id}", "M5zQapPyTZI").content().as(JsonUser.class).getSurname());
+  }
+
+  @Test
+  @DisplayName("Should not return error when adding an item to collection using PATCH api")
+  void testPatchCollectionItem() {
+    String catOption1 =
+        assertStatus(
+            HttpStatus.CREATED,
+            POST("/categoryOptions/", "{'name':'CategoryOption1', 'shortName':'CATOPT1'}"));
+
+    String cat =
+        assertStatus(
+            HttpStatus.CREATED,
+            POST(
+                "/categories/",
+                "{'name':'Category', 'shortName':'CAT','dataDimensionType':'DISAGGREGATION','categoryOptions':[{'id':'"
+                    + catOption1
+                    + "'}]}"));
+
+    String catOption2 =
+        assertStatus(
+            HttpStatus.CREATED,
+            POST("/categoryOptions/", "{'name':'CategoryOption2', 'shortName':'CATOPT2'}"));
+
+    PATCH(
+            "/categories/" + cat,
+            "[{'op': 'add', 'path': '/categoryOptions/-', 'value': { 'id': '"
+                + catOption2
+                + "' } }]")
+        .content(HttpStatus.OK);
+
+    JsonObject category = GET("/categories/{id}", cat).content();
+    assertEquals(2, category.getArray("categoryOptions").size());
   }
 
   @Test
@@ -446,7 +479,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
         409,
         "ERROR",
         "Objects of this class cannot be set as favorite",
-        POST("/users/" + getSuperuserUid() + "/favorite").content(HttpStatus.CONFLICT));
+        POST("/users/" + getAdminUid() + "/favorite").content(HttpStatus.CONFLICT));
   }
 
   @Test
@@ -516,7 +549,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
         409,
         "ERROR",
         "Objects of this class cannot be subscribed to",
-        POST("/users/" + getSuperuserUid() + "/subscriber").content(HttpStatus.CONFLICT));
+        POST("/users/" + getAdminUid() + "/subscriber").content(HttpStatus.CONFLICT));
   }
 
   @Test
@@ -618,7 +651,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
   @Test
   void testPutJsonObject_accountExpiry() {
     String userId = switchToNewUser("someUser").getUid();
-    switchToSuperuser();
+    switchToAdminUser();
     JsonUser user = GET("/users/{id}", userId).content().as(JsonUser.class);
     assertStatus(
         HttpStatus.OK,
@@ -632,7 +665,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
   @Test
   void testPutJsonObject_accountExpiry_PutNoChange() {
     String userId = switchToNewUser("someUser").getUid();
-    switchToSuperuser();
+    switchToAdminUser();
     JsonUser user = GET("/users/{id}", userId).content().as(JsonUser.class);
     assertStatus(HttpStatus.OK, PUT("/users/{id}", userId, Body(user.toString())));
     assertNull(GET("/users/{id}", userId).content().as(JsonUser.class).getAccountExpiry());
@@ -664,7 +697,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
   @Test
   void testPutJsonObject_accountExpiry_NaN() {
     String userId = switchToNewUser("someUser").getUid();
-    switchToSuperuser();
+    switchToAdminUser();
     JsonUser user = GET("/users/{id}", userId).content().as(JsonUser.class);
     String body = user.node().addMember("accountExpiry", "\"NaN\"").toString();
     assertEquals(
@@ -734,7 +767,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
 
     manager.flush();
     manager.clear();
-    switchToSuperuser();
+    switchToAdminUser();
 
     // TODO: MAS: This tests fails because it will update the acting user's usergroups and then fail
     // in the test:
@@ -770,7 +803,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
     // first create an object which has a collection
     manager.flush();
     manager.clear();
-    switchToSuperuser();
+    switchToAdminUser();
 
     // TODO: MAS: This tests fails because it will update the acting user's usergroups and then fail
     // in the test:
@@ -826,7 +859,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
 
     manager.flush();
     manager.clear();
-    switchToSuperuser();
+    switchToAdminUser();
 
     assertStatus(HttpStatus.OK, POST("/userGroups/{uid}/users/{itemId}", groupId, userId));
     assertUserGroupHasOnlyUser(groupId, userId);
@@ -854,7 +887,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
     // first create an object which has a collection
     manager.flush();
     manager.clear();
-    switchToSuperuser();
+    switchToAdminUser();
 
     // TODO: MAS: This tests fails because it will update the acting user's usergroups and then fail
     // in the test:
@@ -1210,7 +1243,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
   private void assertUserGroupHasOnlyUser(String groupId, String userId) {
     manager.flush();
     manager.clear();
-    switchToSuperuser();
+    switchToAdminUser();
 
     JsonList<JsonUser> usersInGroup =
         GET("/userGroups/{uid}/users/", groupId, userId).content().getList("users", JsonUser.class);
@@ -1221,7 +1254,7 @@ class AbstractCrudControllerTest extends H2ControllerIntegrationTestBase {
   private void assertUserGroupHasNoUser(String groupId) {
     manager.flush();
     manager.clear();
-    switchToSuperuser();
+    switchToAdminUser();
 
     JsonList<JsonUser> usersInGroup =
         GET("/userGroups/{uid}/users/", groupId).content().getList("users", JsonUser.class);
