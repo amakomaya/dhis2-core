@@ -87,6 +87,20 @@ public class QuarterlyPeriodType extends QuarterlyAbstractPeriodType {
     if (!calendar.name().equals(ISO_CALENDAR_NAME) && newUnit.isIso8601()) {
       newUnit = calendar.fromIso(newUnit);
     }
+    if (calendar.name().equals("nepali")) {
+      if(newUnit.getMonth() == 9){
+        newUnit.setMonth(10);
+      }
+      if(newUnit.getMonth() == 3){
+        newUnit.setMonth(4);
+      }
+      if(newUnit.getMonth() == 12){
+        newUnit.setMonth(1);
+      }
+      if(newUnit.getMonth() == 6){
+        newUnit.setMonth(7);
+      }
+    }
 
     switch (newUnit.getMonth()) {
       case 1:
