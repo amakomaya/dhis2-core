@@ -27,11 +27,11 @@
  */
 package org.hisp.dhis.tracker.imports.bundle;
 
+import static org.hisp.dhis.test.TestBase.injectSecurityContext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -41,7 +41,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.hisp.dhis.scheduling.JobProgress;
 import org.hisp.dhis.scheduling.RecordingJobProgress;
-import org.hisp.dhis.system.notification.Notifier;
 import org.hisp.dhis.tracker.imports.DefaultTrackerImportService;
 import org.hisp.dhis.tracker.imports.ParamsConverter;
 import org.hisp.dhis.tracker.imports.TrackerImportParams;
@@ -52,6 +51,7 @@ import org.hisp.dhis.tracker.imports.preprocess.TrackerPreprocessService;
 import org.hisp.dhis.tracker.imports.report.PersistenceReport;
 import org.hisp.dhis.tracker.imports.validation.ValidationResult;
 import org.hisp.dhis.tracker.imports.validation.ValidationService;
+import org.hisp.dhis.user.SystemUser;
 import org.hisp.dhis.user.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -73,8 +73,6 @@ class TrackerImporterServiceTest {
 
   @Mock private TrackerUserService trackerUserService;
 
-  @Mock private Notifier notifier;
-
   @Mock private ValidationResult validationResult;
 
   private DefaultTrackerImportService subject;
@@ -85,6 +83,8 @@ class TrackerImporterServiceTest {
 
   @BeforeEach
   public void setUp() {
+    injectSecurityContext(new SystemUser());
+
     subject =
         new DefaultTrackerImportService(
             trackerBundleService, validationService, trackerPreprocessService, trackerUserService);
@@ -93,7 +93,7 @@ class TrackerImporterServiceTest {
     event.setEvent("EventUid");
     final List<Event> events = List.of(event);
 
-    params = TrackerImportParams.builder().userId("123").build();
+    params = TrackerImportParams.builder().build();
 
     trackerObjects =
         TrackerObjects.builder()
@@ -103,7 +103,7 @@ class TrackerImporterServiceTest {
             .trackedEntities(new ArrayList<>())
             .build();
 
-    when(trackerUserService.getUser(anyString())).thenReturn(getUser());
+    when(trackerUserService.getCurrentUser()).thenReturn(getUser());
 
     when(validationService.validate(any(TrackerBundle.class))).thenReturn(validationResult);
     when(validationService.validateRuleEngine(any(TrackerBundle.class)))
@@ -114,8 +114,7 @@ class TrackerImporterServiceTest {
 
   @Test
   void testSkipSideEffect() {
-    TrackerImportParams parameters =
-        TrackerImportParams.builder().skipSideEffects(true).userId("123").build();
+    TrackerImportParams parameters = TrackerImportParams.builder().skipSideEffects(true).build();
 
     TrackerObjects objects =
         TrackerObjects.builder()

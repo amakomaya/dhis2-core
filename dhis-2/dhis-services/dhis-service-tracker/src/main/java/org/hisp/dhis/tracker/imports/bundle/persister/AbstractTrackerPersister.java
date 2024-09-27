@@ -51,9 +51,9 @@ import org.hisp.dhis.reservedvalue.ReservedValueService;
 import org.hisp.dhis.trackedentity.TrackedEntity;
 import org.hisp.dhis.trackedentity.TrackedEntityAttribute;
 import org.hisp.dhis.trackedentityattributevalue.TrackedEntityAttributeValue;
-import org.hisp.dhis.trackedentityattributevalue.TrackedEntityAttributeValueChangeLog;
-import org.hisp.dhis.trackedentityattributevalue.TrackedEntityAttributeValueChangeLogService;
 import org.hisp.dhis.tracker.TrackerType;
+import org.hisp.dhis.tracker.export.trackedentity.TrackedEntityAttributeValueChangeLog;
+import org.hisp.dhis.tracker.export.trackedentity.TrackedEntityChangeLogService;
 import org.hisp.dhis.tracker.imports.AtomicMode;
 import org.hisp.dhis.tracker.imports.FlushMode;
 import org.hisp.dhis.tracker.imports.TrackerIdSchemeParams;
@@ -66,6 +66,7 @@ import org.hisp.dhis.tracker.imports.job.TrackerNotificationDataBundle;
 import org.hisp.dhis.tracker.imports.preheat.TrackerPreheat;
 import org.hisp.dhis.tracker.imports.report.Entity;
 import org.hisp.dhis.tracker.imports.report.TrackerTypeReport;
+import org.hisp.dhis.user.CurrentUserUtil;
 
 /**
  * @author Luciano Fiandesio
@@ -77,8 +78,7 @@ public abstract class AbstractTrackerPersister<
     implements TrackerPersister<T, V> {
   protected final ReservedValueService reservedValueService;
 
-  protected final TrackedEntityAttributeValueChangeLogService
-      trackedEntityAttributeValueChangeLogService;
+  protected final TrackedEntityChangeLogService trackedEntityChangeLogService;
 
   /**
    * Template method that can be used by classes extending this class to execute the persistence
@@ -378,7 +378,10 @@ public abstract class AbstractTrackerPersister<
             : entityManager.merge(trackedEntityAttributeValue));
 
     logTrackedEntityAttributeValueHistory(
-        preheat.getUsername(), trackedEntityAttributeValue, trackedEntity, ChangeLogType.DELETE);
+        CurrentUserUtil.getCurrentUsername(),
+        trackedEntityAttributeValue,
+        trackedEntity,
+        ChangeLogType.DELETE);
   }
 
   private void saveOrUpdate(
@@ -410,7 +413,10 @@ public abstract class AbstractTrackerPersister<
     }
 
     logTrackedEntityAttributeValueHistory(
-        preheat.getUsername(), trackedEntityAttributeValue, trackedEntity, changeLogType);
+        CurrentUserUtil.getCurrentUsername(),
+        trackedEntityAttributeValue,
+        trackedEntity,
+        changeLogType);
   }
 
   private static boolean isFileResource(TrackedEntityAttributeValue trackedEntityAttributeValue) {
@@ -451,8 +457,7 @@ public abstract class AbstractTrackerPersister<
           new TrackedEntityAttributeValueChangeLog(
               attributeValue, attributeValue.getValue(), userName, changeLogType);
       valueAudit.setTrackedEntity(trackedEntity);
-      trackedEntityAttributeValueChangeLogService.addTrackedEntityAttributeValueChangLog(
-          valueAudit);
+      trackedEntityChangeLogService.addTrackedEntityAttributeValueChangeLog(valueAudit);
     }
   }
 }
