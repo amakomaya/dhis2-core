@@ -49,8 +49,10 @@ import org.hisp.dhis.audit.AuditType;
 import org.hisp.dhis.category.CategoryOptionCombo;
 import org.hisp.dhis.category.CategoryService;
 import org.hisp.dhis.changelog.ChangeLogType;
+import org.hisp.dhis.common.CodeGenerator;
 import org.hisp.dhis.common.DeliveryChannel;
 import org.hisp.dhis.common.IdentifiableObjectManager;
+import org.hisp.dhis.common.UID;
 import org.hisp.dhis.dataelement.DataElement;
 import org.hisp.dhis.dataelement.DataElementService;
 import org.hisp.dhis.feedback.BadRequestException;
@@ -81,7 +83,6 @@ import org.hisp.dhis.tracker.export.enrollment.EnrollmentOperationParams;
 import org.hisp.dhis.tracker.export.enrollment.EnrollmentService;
 import org.hisp.dhis.tracker.export.event.EventChangeLogService;
 import org.hisp.dhis.tracker.export.event.TrackedEntityDataValueChangeLog;
-import org.hisp.dhis.tracker.export.trackedentity.TrackedEntityParams;
 import org.hisp.dhis.tracker.export.trackedentity.TrackedEntityService;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeEach;
@@ -179,7 +180,7 @@ class MaintenanceServiceTest extends PostgresIntegrationTestBase {
     testDate2.withTimeAtStartOfDay();
     enrollmentDate = testDate2.toDate();
     enrollment = new Enrollment(enrollmentDate, occurredDate, trackedEntity, program);
-    enrollment.setUid("UID-A");
+    enrollment.setUid(CodeGenerator.generateUid());
     enrollment.setOrganisationUnit(organisationUnit);
     Enrollment enrollmentWithTeAssociation =
         new Enrollment(enrollmentDate, occurredDate, trackedEntityWithAssociations, program);
@@ -314,15 +315,11 @@ class MaintenanceServiceTest extends PostgresIntegrationTestBase {
             .build();
     manager.save(trackedEntityB);
     programMessageService.saveProgramMessage(message);
-    assertNotNull(
-        trackedEntityService.getTrackedEntity(
-            trackedEntityB.getUid(), null, TrackedEntityParams.FALSE, false));
+    assertNotNull(trackedEntityService.getTrackedEntity(trackedEntityB.getUid()));
     manager.delete(trackedEntityB);
     assertThrows(
         NotFoundException.class,
-        () ->
-            trackedEntityService.getTrackedEntity(
-                trackedEntityB.getUid(), null, TrackedEntityParams.FALSE, false));
+        () -> trackedEntityService.getTrackedEntity(trackedEntityB.getUid()));
     assertTrue(trackedEntityExistsIncludingDeleted(trackedEntityB.getUid()));
 
     maintenanceService.deleteSoftDeletedTrackedEntities();
@@ -509,7 +506,7 @@ class MaintenanceServiceTest extends PostgresIntegrationTestBase {
       throws ForbiddenException, BadRequestException, NotFoundException {
     EnrollmentOperationParams params =
         EnrollmentOperationParams.builder()
-            .enrollmentUids(Set.of(enrollment.getUid()))
+            .enrollments(Set.of(UID.of(enrollment)))
             .orgUnitMode(ALL)
             .includeDeleted(true)
             .build();

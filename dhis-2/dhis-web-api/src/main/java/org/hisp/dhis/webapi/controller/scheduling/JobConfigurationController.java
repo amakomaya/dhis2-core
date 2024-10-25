@@ -73,6 +73,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/jobConfigurations")
 @RequiredArgsConstructor
+@OpenApi.Document(classifiers = {"team:platform", "purpose:operation"})
 public class JobConfigurationController extends AbstractCrudController<JobConfiguration> {
 
   private final JobConfigurationService jobConfigurationService;
@@ -124,7 +125,7 @@ public class JobConfigurationController extends AbstractCrudController<JobConfig
   public ObjectReport executeNow(@PathVariable("uid") String uid)
       throws NotFoundException, ConflictException {
 
-    jobSchedulerService.executeNow(uid);
+    jobSchedulerService.runInTransaction(uid);
 
     // OBS! This response is kept for better backwards compatibility
     return new ObjectReport(JobConfiguration.class, 0);

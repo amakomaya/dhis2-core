@@ -60,7 +60,6 @@ import org.hisp.dhis.tracker.imports.domain.Event;
 import org.hisp.dhis.tracker.imports.domain.MetadataIdentifier;
 import org.hisp.dhis.tracker.imports.domain.TrackedEntity;
 import org.hisp.dhis.tracker.imports.domain.TrackerObjects;
-import org.hisp.dhis.user.User;
 import org.hisp.dhis.util.DateUtils;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -77,7 +76,7 @@ class SmsImportMapperTest extends TestBase {
     input.setEnrollment(CodeGenerator.generateUid());
     input.setEnrollmentStatus(SmsEnrollmentStatus.COMPLETED);
 
-    TrackerObjects actual = map(input, program(), null, user("francis"));
+    TrackerObjects actual = map(input, program(), null, "francis");
 
     TrackerObjects expected =
         TrackerObjects.builder()
@@ -97,11 +96,6 @@ class SmsImportMapperTest extends TestBase {
                         .orgUnit(MetadataIdentifier.ofUid(input.getOrgUnit().getUid()))
                         .trackedEntityType(
                             MetadataIdentifier.ofUid(input.getTrackedEntityType().getUid()))
-                        .enrollments(
-                            List.of(
-                                Enrollment.builder()
-                                    .enrollment(input.getEnrollment().getUid())
-                                    .build()))
                         .build()))
             .build();
     assertEquals(expected, actual);
@@ -119,7 +113,7 @@ class SmsImportMapperTest extends TestBase {
     // non-program attribute values are mapped onto the tracked entity
     input.setValues(List.of(new SmsAttributeValue("fN8skWVI8JS", "soap")));
 
-    TrackerObjects actual = map(input, program("YjToz9y10ZZ"), null, user("francis"));
+    TrackerObjects actual = map(input, program("YjToz9y10ZZ"), null, "francis");
 
     TrackerObjects expected =
         TrackerObjects.builder()
@@ -145,11 +139,6 @@ class SmsImportMapperTest extends TestBase {
                                     .attribute(MetadataIdentifier.ofUid("fN8skWVI8JS"))
                                     .value("soap")
                                     .build()))
-                        .enrollments(
-                            List.of(
-                                Enrollment.builder()
-                                    .enrollment(input.getEnrollment().getUid())
-                                    .build()))
                         .build()))
             .build();
     assertEquals(expected, actual);
@@ -171,7 +160,7 @@ class SmsImportMapperTest extends TestBase {
     input.setIncidentDate(occurredDate);
     input.setCoordinates(new GeoPoint(48.8575f, 2.3514f));
 
-    TrackerObjects actual = map(input, program(), null, user("francis"));
+    TrackerObjects actual = map(input, program(), null, "francis");
 
     List<Enrollment> expected =
         List.of(
@@ -210,7 +199,7 @@ class SmsImportMapperTest extends TestBase {
         List.of(new SmsDataValue(CodeGenerator.generateUid(), "oHvZHthw9Y0", "hello")));
     input.setEvents(List.of(smsEvent));
 
-    TrackerObjects actual = map(input, program(), null, user("francis"));
+    TrackerObjects actual = map(input, program(), null, "francis");
 
     List<Event> expected =
         List.of(
@@ -261,7 +250,7 @@ class SmsImportMapperTest extends TestBase {
             new SmsAttributeValue("cCR4QVathUM", "twoWasUpdated"),
             new SmsAttributeValue("zjOPAEZyQxu", "threeWasAdded")));
 
-    TrackerObjects actual = map(input, program("YjToz9y10ZZ"), trackedEntity, user("francis"));
+    TrackerObjects actual = map(input, program("YjToz9y10ZZ"), trackedEntity, "francis");
 
     List<Attribute> expected =
         List.of(
@@ -347,7 +336,7 @@ class SmsImportMapperTest extends TestBase {
     input.setAttributeOptionCombo(CodeGenerator.generateUid());
     input.setEventStatus(SmsEventStatus.COMPLETED);
 
-    TrackerObjects actual = map(input, user("francis"));
+    TrackerObjects actual = map(input, "francis");
 
     Event expected =
         Event.builder()
@@ -381,7 +370,7 @@ class SmsImportMapperTest extends TestBase {
     // that is necessary though.
     input.setValues(List.of(new SmsDataValue(CodeGenerator.generateUid(), "oHvZHthw9Y0", "hello")));
 
-    TrackerObjects actual = map(input, user("francis"));
+    TrackerObjects actual = map(input, "francis");
 
     Event expected =
         Event.builder()
@@ -419,11 +408,5 @@ class SmsImportMapperTest extends TestBase {
                 })
             .toList());
     return program;
-  }
-
-  private static User user(String username) {
-    User user = new User();
-    user.setUsername(username);
-    return user;
   }
 }

@@ -33,7 +33,6 @@ import static org.hisp.dhis.tracker.TrackerType.EVENT;
 import static org.hisp.dhis.tracker.TrackerType.TRACKED_ENTITY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -53,10 +52,7 @@ import org.hisp.dhis.tracker.acl.TrackerAccessManager;
 import org.hisp.dhis.tracker.export.Order;
 import org.hisp.dhis.tracker.export.enrollment.EnrollmentService;
 import org.hisp.dhis.tracker.export.event.EventService;
-import org.hisp.dhis.tracker.export.trackedentity.TrackedEntityParams;
 import org.hisp.dhis.tracker.export.trackedentity.TrackedEntityService;
-import org.hisp.dhis.user.User;
-import org.hisp.dhis.user.UserDetails;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -89,8 +85,6 @@ class RelationshipOperationParamsMapperTest extends TestBase {
 
   private Event event;
 
-  private UserDetails user;
-
   @BeforeEach
   public void setUp() {
     OrganisationUnit organisationUnit = createOrganisationUnit('A');
@@ -103,22 +97,17 @@ class RelationshipOperationParamsMapperTest extends TestBase {
     enrollment.setUid(EN_UID);
     event = createEvent(programStage, enrollment, organisationUnit);
     event.setUid(EV_UID);
-
-    User u = new User();
-    u.setUsername("admin");
-
-    user = UserDetails.fromUser(u);
-    injectSecurityContext(user);
   }
 
   @Test
   void shouldMapTrackedEntityWhenATrackedEntityIsPassed()
       throws NotFoundException, ForbiddenException, BadRequestException {
-    when(trackedEntityService.getTrackedEntity(TE_UID, null, TrackedEntityParams.FALSE, false))
-        .thenReturn(trackedEntity);
-    when(accessManager.canRead(user, trackedEntity)).thenReturn(List.of());
+    when(trackedEntityService.getTrackedEntity(TE_UID)).thenReturn(trackedEntity);
     RelationshipOperationParams params =
-        RelationshipOperationParams.builder().type(TRACKED_ENTITY).identifier(TE_UID).build();
+        RelationshipOperationParams.builder()
+            .type(TRACKED_ENTITY)
+            .identifier(UID.of(TE_UID))
+            .build();
 
     RelationshipQueryParams queryParams = mapper.map(params);
 
@@ -127,34 +116,11 @@ class RelationshipOperationParamsMapperTest extends TestBase {
   }
 
   @Test
-  void shouldThrowWhenTrackedEntityIsNotFound()
-      throws ForbiddenException, NotFoundException, BadRequestException {
-    when(trackedEntityService.getTrackedEntity(TE_UID, null, TrackedEntityParams.FALSE, false))
-        .thenReturn(null);
-    RelationshipOperationParams params =
-        RelationshipOperationParams.builder().type(TRACKED_ENTITY).identifier(TE_UID).build();
-
-    assertThrows(NotFoundException.class, () -> mapper.map(params));
-  }
-
-  @Test
-  void shouldThrowWhenUserHasNoAccessToTrackedEntity()
-      throws ForbiddenException, NotFoundException, BadRequestException {
-    when(trackedEntityService.getTrackedEntity(TE_UID, null, TrackedEntityParams.FALSE, false))
-        .thenReturn(trackedEntity);
-    when(accessManager.canRead(user, trackedEntity)).thenReturn(List.of("error"));
-    RelationshipOperationParams params =
-        RelationshipOperationParams.builder().type(TRACKED_ENTITY).identifier(TE_UID).build();
-
-    assertThrows(ForbiddenException.class, () -> mapper.map(params));
-  }
-
-  @Test
   void shouldMapEnrollmentWhenAEnrollmentIsPassed()
       throws NotFoundException, ForbiddenException, BadRequestException {
-    when(enrollmentService.getEnrollment(EN_UID)).thenReturn(enrollment);
+    when(enrollmentService.getEnrollment(UID.of(EN_UID))).thenReturn(enrollment);
     RelationshipOperationParams params =
-        RelationshipOperationParams.builder().type(ENROLLMENT).identifier(EN_UID).build();
+        RelationshipOperationParams.builder().type(ENROLLMENT).identifier(UID.of(EN_UID)).build();
 
     RelationshipQueryParams queryParams = mapper.map(params);
 
@@ -167,7 +133,7 @@ class RelationshipOperationParamsMapperTest extends TestBase {
       throws NotFoundException, ForbiddenException, BadRequestException {
     when(eventService.getEvent(UID.of(EV_UID))).thenReturn(event);
     RelationshipOperationParams params =
-        RelationshipOperationParams.builder().type(EVENT).identifier(EV_UID).build();
+        RelationshipOperationParams.builder().type(EVENT).identifier(UID.of(EV_UID)).build();
 
     RelationshipQueryParams queryParams = mapper.map(params);
 
@@ -178,14 +144,12 @@ class RelationshipOperationParamsMapperTest extends TestBase {
   @Test
   void shouldMapOrderInGivenOrder()
       throws ForbiddenException, NotFoundException, BadRequestException {
-    when(trackedEntityService.getTrackedEntity(TE_UID, null, TrackedEntityParams.FALSE, false))
-        .thenReturn(trackedEntity);
-    when(accessManager.canRead(user, trackedEntity)).thenReturn(List.of());
+    when(trackedEntityService.getTrackedEntity(TE_UID)).thenReturn(trackedEntity);
 
     RelationshipOperationParams operationParams =
         RelationshipOperationParams.builder()
             .type(TRACKED_ENTITY)
-            .identifier(TE_UID)
+            .identifier(UID.of(TE_UID))
             .orderBy("created", SortDirection.DESC)
             .build();
 
@@ -197,12 +161,13 @@ class RelationshipOperationParamsMapperTest extends TestBase {
   @Test
   void shouldMapNullOrderingParamsWhenNoOrderingParamsAreSpecified()
       throws ForbiddenException, NotFoundException, BadRequestException {
-    when(trackedEntityService.getTrackedEntity(TE_UID, null, TrackedEntityParams.FALSE, false))
-        .thenReturn(trackedEntity);
-    when(accessManager.canRead(user, trackedEntity)).thenReturn(List.of());
+    when(trackedEntityService.getTrackedEntity(TE_UID)).thenReturn(trackedEntity);
 
     RelationshipOperationParams operationParams =
-        RelationshipOperationParams.builder().type(TRACKED_ENTITY).identifier(TE_UID).build();
+        RelationshipOperationParams.builder()
+            .type(TRACKED_ENTITY)
+            .identifier(UID.of(TE_UID))
+            .build();
 
     RelationshipQueryParams queryParams = mapper.map(operationParams);
 
